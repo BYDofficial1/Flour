@@ -1,8 +1,3 @@
-
-
-
-
-
 import React from 'react';
 import type { Transaction } from '../types';
 import { EditIcon } from './icons/EditIcon';
@@ -10,18 +5,27 @@ import { DeleteIcon } from './icons/DeleteIcon';
 import { formatCurrency } from '../utils/currency';
 import { DocumentPlusIcon } from './icons/DocumentPlusIcon';
 import { ClockIcon } from './icons/ClockIcon';
-import { WarningIcon } from './icons/WarningIcon';
+import { ReceiptIcon } from './icons/ReceiptIcon';
 
 interface TransactionListProps {
     transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
     unsyncedIds: Set<string>;
-    conflictedIds: Set<string>;
     isEditMode: boolean;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, unsyncedIds, conflictedIds, isEditMode }) => {
+const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ status }) => {
+    const baseClasses = "px-2 py-0.5 text-xs font-semibold rounded-full capitalize";
+    const styles = {
+        paid: 'bg-green-100 text-green-800',
+        unpaid: 'bg-red-100 text-red-800',
+        partial: 'bg-yellow-100 text-yellow-800',
+    };
+    return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
+};
+
+const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, unsyncedIds, isEditMode }) => {
     if (transactions.length === 0) {
         return (
             <div className="text-center py-16 px-6 bg-white rounded-lg shadow-md border-2 border-dashed border-slate-200">
@@ -35,7 +39,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
     // A more detailed and visually appealing card for mobile view
     const TransactionCard: React.FC<{ t: Transaction }> = ({ t }) => {
         const isUnsynced = unsyncedIds.has(t.id);
-        const isConflicted = conflictedIds.has(t.id);
+        const balanceDue = t.total - (t.paidAmount || 0);
 
         return (
             <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-4 overflow-hidden border border-slate-200/80">
@@ -44,12 +48,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                         <div>
                             <p className="font-bold text-lg text-slate-800 flex items-center gap-2">
                                 {t.customerName}
-                                {isConflicted && (
-                                    <span title="Sync conflict: This transaction was updated on the server. Your local changes were discarded.">
-                                        <WarningIcon />
-                                    </span>
-                                )}
-                                {isUnsynced && !isConflicted && (
+                                {isUnsynced && (
                                     <span title="Pending sync">
                                         <ClockIcon className="h-4 w-4 text-primary-500" />
                                     </span>
@@ -61,6 +60,22 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                             <p className="text-xl font-bold text-primary-600">{formatCurrency(t.total)}</p>
                             {t.customerMobile && <p className="text-xs text-slate-500 mt-1">{t.customerMobile}</p>}
                         </div>
+                    </div>
+                     <div className="mt-3 flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                            <StatusBadge status={t.paymentStatus} />
+                            {t.paymentStatus === 'partial' && (
+                                <span title="Partial payment received. Balance due.">
+                                    <ReceiptIcon className="text-yellow-600" />
+                                </span>
+                            )}
+                        </div>
+                         {t.paymentStatus !== 'paid' && balanceDue > 0 && (
+                            <div className="text-sm">
+                                <span className="text-slate-500">Balance: </span>
+                                <span className="font-bold text-red-600">{formatCurrency(balanceDue)}</span>
+                            </div>
+                        )}
                     </div>
                     <div className="border-t my-3 border-slate-100"></div>
                     <div className="text-sm text-slate-600 space-y-2">
@@ -125,7 +140,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                 <th scope="col" className="px-4 py-4 font-semibold">Customer</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Item</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Details</th>
-                                <th scope="col" className="px-4 py-4 font-semibold text-right">Other Costs</th>
+                                <th scope="col" className="px-4 py-4 font-semibold text-right">Payment</th>
                                 <th scope="col" className="px-4 py-4 font-semibold text-right">Total</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Date</th>
                                 {isEditMode && <th scope="col" className="px-4 py-4 font-semibold text-center">Actions</th>}
@@ -134,20 +149,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                         <tbody>
                             {transactions.map(t => {
                                 const isUnsynced = unsyncedIds.has(t.id);
-                                const isConflicted = conflictedIds.has(t.id);
-                                const hasOtherCosts = (t.grindingCost && t.grindingCost > 0) || (t.cleaningCost && t.cleaningCost > 0);
+                                const balanceDue = t.total - (t.paidAmount || 0);
                                 return (
                                 <React.Fragment key={t.id}>
                                     <tr className="bg-white border-b hover:bg-primary-50/50 transition-colors duration-200">
                                         <td className="px-4 py-4 font-medium text-slate-900 align-top">
                                             <div className="flex items-center gap-2">
                                                  <span>{t.customerName}</span>
-                                                {isConflicted && (
-                                                    <span title="Sync conflict: This transaction was updated on the server. Your local changes were discarded.">
-                                                        <WarningIcon />
-                                                    </span>
-                                                )}
-                                                {isUnsynced && !isConflicted && (
+                                                {isUnsynced && (
                                                     <span title="Pending sync">
                                                         <ClockIcon className="h-4 w-4 text-primary-500" />
                                                     </span>
@@ -160,13 +169,20 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                              <div className="text-sm">{t.quantity.toFixed(2)} kg</div>
                                              <div className="text-xs">@ {formatCurrency(t.rate)}/kg</div>
                                         </td>
-                                        <td className="px-4 py-4 text-right align-top font-medium text-slate-700 text-xs">
-                                            {hasOtherCosts ? (
-                                                <>
-                                                    {t.grindingCost && t.grindingCost > 0 && <div>Grinding: {formatCurrency(t.grindingCost)}</div>}
-                                                    {t.cleaningCost && t.cleaningCost > 0 && <div className="mt-1">Cleaning: {formatCurrency(t.cleaningCost)}</div>}
-                                                </>
-                                            ) : '-'}
+                                        <td className="px-4 py-4 text-right align-top font-medium text-slate-700">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <StatusBadge status={t.paymentStatus} />
+                                                {t.paymentStatus === 'partial' && (
+                                                    <span title="Partial payment received. Balance due.">
+                                                        <ReceiptIcon className="text-yellow-600" />
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {t.paymentStatus !== 'paid' && balanceDue > 0 && (
+                                                <div className="text-xs text-red-600 font-semibold mt-1">
+                                                    Due: {formatCurrency(balanceDue)}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-4 text-right font-bold text-primary-600 align-top text-base">{formatCurrency(t.total)}</td>
                                         <td className="px-4 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>

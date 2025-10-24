@@ -8,9 +8,48 @@ import { ExportIcon } from '../components/icons/ExportIcon';
 import { exportTransactionsToTxt } from '../utils/export';
 import TimeFilterControls from '../components/TimeFilterControls';
 
+interface StatusFilterControlsProps {
+    statusFilter: Transaction['paymentStatus'][];
+    setStatusFilter: (statuses: Transaction['paymentStatus'][]) => void;
+}
+
+const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilter, setStatusFilter }) => {
+    const statuses: Transaction['paymentStatus'][] = ['paid', 'unpaid', 'partial'];
+    
+    const handleToggle = (status: Transaction['paymentStatus']) => {
+        const newFilter = statusFilter.includes(status)
+            ? statusFilter.filter(s => s !== status)
+            : [...statusFilter, status];
+        setStatusFilter(newFilter);
+    };
+
+    const statusStyles: Record<Transaction['paymentStatus'], { active: string, inactive: string }> = {
+        paid: { active: 'bg-green-500 text-white shadow-md', inactive: 'bg-green-100 text-green-800 hover:bg-green-200' },
+        unpaid: { active: 'bg-red-500 text-white shadow-md', inactive: 'bg-red-100 text-red-800 hover:bg-red-200' },
+        partial: { active: 'bg-yellow-500 text-white shadow-md', inactive: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' },
+    };
+
+    return (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-sm font-medium text-slate-700 mr-2 flex-shrink-0">Filter by status:</label>
+            <div className="flex items-center gap-2 p-1 rounded-lg">
+                {statuses.map(status => (
+                    <button
+                        key={status}
+                        onClick={() => handleToggle(status)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all capitalize ${statusFilter.includes(status) ? statusStyles[status].active : statusStyles[status].inactive}`}
+                    >
+                        {status}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 interface TransactionsPageProps {
-    transactions: Transaction[]; // These are now pre-filtered by date and search from App.tsx
+    transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
     openModal: () => void;
@@ -18,12 +57,26 @@ interface TransactionsPageProps {
     setTimeFilter: (filter: TimeFilter) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    statusFilter: Transaction['paymentStatus'][];
+    setStatusFilter: (statuses: Transaction['paymentStatus'][]) => void;
     unsyncedIds: Set<string>;
-    conflictedIds: Set<string>;
     isEditMode: boolean;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdit, onDelete, openModal, timeFilter, setTimeFilter, searchQuery, setSearchQuery, unsyncedIds, conflictedIds, isEditMode }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
+    transactions, 
+    onEdit, 
+    onDelete, 
+    openModal, 
+    timeFilter, 
+    setTimeFilter, 
+    searchQuery, 
+    setSearchQuery, 
+    statusFilter, 
+    setStatusFilter, 
+    unsyncedIds, 
+    isEditMode 
+}) => {
 
     return (
         <div className="mt-4 space-y-6">
@@ -65,14 +118,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdi
                 </div>
             </div>
             
-            <TimeFilterControls timeFilter={timeFilter} setTimeFilter={setTimeFilter} isPrimary={false} />
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200/80 space-y-4 md:space-y-0 md:flex md:flex-wrap md:items-center md:justify-between md:gap-x-8 md:gap-y-4">
+                <TimeFilterControls timeFilter={timeFilter} setTimeFilter={setTimeFilter} isPrimary={false} />
+                <StatusFilterControls statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+            </div>
 
             <TransactionList
                 transactions={transactions}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 unsyncedIds={unsyncedIds}
-                conflictedIds={conflictedIds}
                 isEditMode={isEditMode}
             />
         </div>

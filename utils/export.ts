@@ -30,6 +30,7 @@ Total Transactions: ${transactions.length}
 `;
 
     transactions.forEach((t, index) => {
+        const balanceDue = t.total - (t.paidAmount || 0);
         const transactionCard = `
 =============================================
 Transaction #${index + 1}
@@ -44,9 +45,16 @@ Item:          ${t.item}
 Quantity:      ${t.quantity.toFixed(2)} kg
 Rate:          ${t.rate.toFixed(2)} Rs/kg
 Grinding Cost: ${(t.grindingCost || 0).toFixed(2)} Rs
+Cleaning Cost: ${(t.cleaningCost || 0).toFixed(2)} Rs
 -----------------
 TOTAL:         ${t.total.toFixed(2)} Rs
 -----------------
+
+--- Payment ---
+Status:        ${t.paymentStatus.toUpperCase()}
+Paid Amount:   ${(t.paidAmount || 0).toFixed(2)} Rs
+Balance Due:   ${balanceDue.toFixed(2)} Rs
+---------------
 
 Notes:
 ${t.notes || 'No notes provided.'}

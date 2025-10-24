@@ -7,6 +7,7 @@ import { RupeeIcon } from './icons/RupeeIcon';
 import { WeightIcon } from './icons/WeightIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { formatCurrency } from '../utils/currency';
+import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -34,12 +35,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                 totalTransactions: 0,
                 averageDailySales: 0,
                 averageDailyQuantity: 0,
+                totalDue: 0,
             };
         }
 
         const totalSales = transactions.reduce((acc, t) => acc + t.total, 0);
         const totalQuantity = transactions.reduce((acc, t) => acc + t.quantity, 0);
         const totalTransactions = transactions.length;
+
+        const totalDue = transactions.reduce((acc, t) => {
+            if (t.paymentStatus !== 'paid') {
+                const due = t.total - (t.paidAmount || 0);
+                return acc + due;
+            }
+            return acc;
+        }, 0);
 
         const uniqueDays = new Set(
             transactions.map(t => new Date(t.date).toLocaleDateString('en-CA'))
@@ -53,7 +63,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
             totalQuantity, 
             totalTransactions,
             averageDailySales,
-            averageDailyQuantity
+            averageDailyQuantity,
+            totalDue,
         };
     }, [transactions]);
     
@@ -69,22 +80,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
                 value={`${stats.totalQuantity.toLocaleString()} kg`}
                 icon={<WeightIcon />}
             />
+             <DashboardCard 
+                title="Total Due"
+                value={formatCurrency(stats.totalDue)}
+                icon={<ExclamationCircleIcon className="text-red-500" />}
+            />
             <DashboardCard 
                 title="Total Transactions"
                 value={stats.totalTransactions.toString()}
                 icon={<ChartIcon />}
-            />
-            <DashboardCard 
-                title="Average Daily"
-                value={
-                    <span>
-                        {formatCurrency(stats.averageDailySales)}
-                        <span className="block text-base font-normal text-slate-500 mt-0.5">
-                            {stats.averageDailyQuantity.toFixed(2)} kg
-                        </span>
-                    </span>
-                }
-                icon={<TrendingUpIcon />}
             />
         </div>
     );

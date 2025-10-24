@@ -1,5 +1,6 @@
 
 
+
 export interface Transaction {
     id: string;
     customerName: string;
@@ -13,6 +14,8 @@ export interface Transaction {
     cleaningCost?: number;
     notes?: string;
     updatedAt?: string;
+    paymentStatus: 'paid' | 'unpaid' | 'partial';
+    paidAmount?: number;
 }
 
 export interface Calculation {
@@ -26,7 +29,7 @@ export interface Calculation {
     price_per_maund?: number;
 }
 
-// FIX: Add missing Theme and Settings types for SettingsPage.tsx.
+// Fix: Define and export Theme and Settings types.
 export type Theme = 'amber' | 'blue' | 'green' | 'slate';
 
 export interface Settings {

@@ -7,17 +7,17 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
+import ConflictResolutionModal from './components/ConflictResolutionModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
-import { InformationCircleIcon } from './components/icons/InformationCircleIcon';
 
-export type TimePeriod = 'today' | 'week' | 'month' | 'all' | 'custom';
 export type Page = 'transactions' | 'dashboard' | 'calculator';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
     endDate?: string;
 }
+export type TimePeriod = 'today' | 'week' | 'month' | 'all' | 'custom';
 
 const SYNC_QUEUES = {
     CREATES: 'unsynced_creates',
@@ -39,6 +39,8 @@ const fromSupabase = (t: any): Transaction => ({
   cleaningCost: t.cleaning_cost,
   notes: t.notes,
   updatedAt: t.updated_at,
+  paymentStatus: t.payment_status || 'paid', // Default old records to 'paid'
+  paidAmount: t.paid_amount,
 });
 
 // Map camelCase from UI to snake_case for DB
@@ -54,6 +56,8 @@ const toSupabase = (t: Partial<Transaction>): any => ({
   grinding_cost: t.grindingCost,
   cleaning_cost: t.cleaningCost,
   notes: t.notes,
+  payment_status: t.paymentStatus,
+  paid_amount: t.paidAmount,
   // Do not send `updated_at`. The database trigger will handle it.
 });
 
@@ -70,7 +74,7 @@ const App: React.FC = () => {
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [prefilledData, setPrefilledData] = useState<Partial<Transaction> | null>(null);
     const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
-    const [currentPage, setCurrentPage] = useState<Page>('transactions');
+    const [currentPage, setCurrentPage] = useState<Page>('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -84,7 +88,8 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSupabaseConfigured] = useState<boolean>(!!supabase);
     const [unsyncedIds, setUnsyncedIds] = useState<Set<string>>(new Set());
-    const [conflictedIds, setConflictedIds] = useState<Set<string>>(new Set());
+    const [conflicts, setConflicts] = useState<{ local: Transaction, server: Transaction }[]>([]);
+    const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>([]);
 
     const checkUnsyncedChanges = useCallback(() => {
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
@@ -159,7 +164,6 @@ const App: React.FC = () => {
         if (!isOnline || isSyncing || !isSupabaseConfigured) return;
         
         setIsSyncing(true);
-        setConflictedIds(new Set()); // Clear previous conflicts
         addNotification('Syncing offline changes...', 'info');
 
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
@@ -167,8 +171,7 @@ const App: React.FC = () => {
         const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
         
         let hadErrors = false;
-        const conflictedUpdates: Transaction[] = [];
-
+        
         try {
             // 1. Process Deletes
             if (deletes.length > 0) {
@@ -189,6 +192,7 @@ const App: React.FC = () => {
             }
 
             // 3. Process Updates with conflict detection
+            const conflictsFound: { local: Transaction, server: Transaction }[] = [];
             if (updates.length > 0) {
                 const updatesToPush: Transaction[] = [];
                 
@@ -207,8 +211,26 @@ const App: React.FC = () => {
                     const localBaseUpdatedAt = localUpdate.updatedAt ? new Date(localUpdate.updatedAt).getTime() : 0;
 
                     if (!serverTx || serverUpdatedAt > localBaseUpdatedAt) {
-                        // CONFLICT! The server version is newer or was deleted. Discard local change.
-                        conflictedUpdates.push(localUpdate);
+                        // CONFLICT! The server version is newer or was deleted.
+                        const { data: serverFullTx, error: serverFullError } = await supabase!
+                            .from('transactions')
+                            .select('*')
+                            .eq('id', localUpdate.id)
+                            .single();
+                        
+                        if (serverFullError && serverFullError.code !== 'PGRST116') {
+                             throw new Error(`Conflict data fetch failed for ${localUpdate.id}: ${serverFullError.message}`);
+                        }
+                        // If serverFullTx is null, it means the record was deleted on the server.
+                        // We can treat this as a conflict where server version is "deleted".
+                        if (serverFullTx) {
+                            conflictsFound.push({ local: localUpdate, server: fromSupabase(serverFullTx) });
+                        } else {
+                            // Handle case where item was deleted on server. For now, treat as a standard conflict.
+                            // We can enhance the modal later to show "Deleted on Server".
+                             conflictsFound.push({ local: localUpdate, server: { ...localUpdate, customerName: `${localUpdate.customerName} (Deleted on Server)` } });
+                        }
+
                     } else {
                         // No conflict, add to batch update
                         updatesToPush.push(localUpdate);
@@ -216,7 +238,6 @@ const App: React.FC = () => {
                 }
 
                 if (updatesToPush.length > 0) {
-                    // Use upsert for the non-conflicted batch
                     const { error } = await supabase!.from('transactions').upsert(updatesToPush.map(toSupabase));
                     if (error) {
                         hadErrors = true;
@@ -224,18 +245,18 @@ const App: React.FC = () => {
                     }
                 }
 
-                if (conflictedUpdates.length > 0) {
-                    setConflictedIds(new Set(conflictedUpdates.map(t => t.id)));
-                    addNotification(`${conflictedUpdates.length} updates had conflicts and were discarded. The latest data is now shown.`, 'error');
+                if (conflictsFound.length > 0) {
+                    setConflicts(conflictsFound);
+                    const conflictedIds = new Set(conflictsFound.map(c => c.local.id));
+                    const remainingUpdates = updates.filter(u => conflictedIds.has(u.id));
+                    setQueue(SYNC_QUEUES.UPDATES, remainingUpdates);
+                    addNotification(`${conflictsFound.length} updates have conflicts. Please resolve them.`, 'error');
                 }
             }
 
-            if (!hadErrors) {
+            if (!hadErrors && conflictsFound.length === 0) {
                 clearQueues();
-                console.log("Sync successful!");
-                if (conflictedUpdates.length === 0) {
-                    addNotification('Sync successful!', 'success');
-                }
+                addNotification('Sync successful!', 'success');
             }
         } catch (error: any) {
             console.error("Sync error:", error.message || error);
@@ -244,7 +265,32 @@ const App: React.FC = () => {
         
         await loadInitialData();
         setIsSyncing(false);
-    }, [isOnline, isSyncing, loadInitialData, clearQueues, addNotification, isSupabaseConfigured]);
+    }, [isOnline, isSyncing, loadInitialData, clearQueues, addNotification, isSupabaseConfigured, setQueue]);
+
+    const handleResolveConflict = async (chosenVersion: Transaction, choice: 'local' | 'server') => {
+        const conflict = conflicts.find(c => c.local.id === chosenVersion.id || c.server.id === chosenVersion.id);
+        if (!conflict) return;
+    
+        if (choice === 'local') {
+            addNotification(`Overwriting server with your version for ${chosenVersion.customerName}...`, 'info');
+            const { error } = await supabase!.from('transactions').upsert(toSupabase(chosenVersion));
+            if (error) {
+                addNotification(`Failed to save your version: ${error.message}`, 'error');
+                return; 
+            }
+            addNotification('Your version was saved to the server.', 'success');
+        } else { // 'server'
+            addNotification(`Keeping server version for ${chosenVersion.customerName}. Your offline changes are discarded.`, 'success');
+        }
+        
+        // Clean up local state and queues for the resolved item
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        setQueue(SYNC_QUEUES.UPDATES, updates.filter(t => t.id !== chosenVersion.id));
+        setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
+        
+        // Refresh local data to show the resolved state
+        await loadInitialData();
+    };
 
     // Auto-sync when coming online with pending changes
     useEffect(() => {
@@ -323,20 +369,26 @@ const App: React.FC = () => {
     }, [transactions, timeFilter]);
 
     const filteredTransactions = useMemo(() => {
-        if (!searchQuery) return dateFilteredTransactions;
+        let result = dateFilteredTransactions;
+
+        if (statusFilter.length > 0) {
+            result = result.filter(transaction => statusFilter.includes(transaction.paymentStatus));
+        }
+
+        if (!searchQuery) return result;
+        
         const lowercasedQuery = searchQuery.toLowerCase();
-        return dateFilteredTransactions.filter(transaction =>
+        return result.filter(transaction =>
             transaction.customerName.toLowerCase().includes(lowercasedQuery) ||
             transaction.item.toLowerCase().includes(lowercasedQuery)
         );
-    }, [dateFilteredTransactions, searchQuery]);
+    }, [dateFilteredTransactions, searchQuery, statusFilter]);
 
 
-    const handleAddTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'date' | 'updatedAt'>) => {
+    const handleAddTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'updatedAt'>) => {
         const newTransaction: Transaction = {
             ...transaction,
             id: crypto.randomUUID(),
-            date: new Date().toISOString(),
         };
         const newTransactions = [newTransaction, ...transactions];
         setTransactions(newTransactions);
@@ -472,7 +524,7 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-amber-50">
+        <div className="flex min-h-screen bg-primary-50">
             <Sidebar 
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
@@ -507,8 +559,9 @@ const App: React.FC = () => {
                                     setTimeFilter={setTimeFilter}
                                     searchQuery={searchQuery}
                                     setSearchQuery={setSearchQuery}
+                                    statusFilter={statusFilter}
+                                    setStatusFilter={setStatusFilter}
                                     unsyncedIds={unsyncedIds}
-                                    conflictedIds={conflictedIds}
                                     isEditMode={isEditMode}
                                 />
                             )}
@@ -540,6 +593,11 @@ const App: React.FC = () => {
                 onConfirm={handleDeleteTransaction}
                 title="Delete Transaction"
                 message="Are you sure you want to delete this transaction? This action cannot be undone."
+            />
+            <ConflictResolutionModal
+                isOpen={conflicts.length > 0}
+                conflicts={conflicts}
+                onResolve={handleResolveConflict}
             />
         </div>
     );

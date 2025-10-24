@@ -57,11 +57,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 h-full w-64 bg-stone-800 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out shadow-lg flex flex-col ${
+                className={`fixed top-0 left-0 h-full w-64 bg-stone-800 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out shadow-lg flex flex-col justify-between ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 } lg:translate-x-0 lg:shadow-xl`}
             >
-                <div className="flex-shrink-0">
+                <div> {/* Top section */}
                     <div className="flex justify-between items-center mb-8">
                          <div className="flex items-center gap-2">
                             <button 
@@ -103,6 +103,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                             />
                         </ul>
                     </nav>
+                </div>
+
+                <div> {/* Bottom section */}
+                     <ul className="space-y-2 border-t border-slate-600/50 pt-4">
+                         
+                    </ul>
                 </div>
 
             </aside>
