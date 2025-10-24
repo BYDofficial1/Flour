@@ -14,13 +14,13 @@ interface DashboardProps {
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode; iconBgClass?: string; }> = ({ title, value, icon, iconBgClass }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 ease-in-out flex items-center space-x-4 border border-primary-200/50">
-        <div className={`p-3 rounded-full ${iconBgClass || 'bg-primary-100'}`}>
+    <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-in-out flex items-center space-x-4 border border-slate-200/80">
+        <div className={`p-4 rounded-lg ${iconBgClass || 'bg-primary-100'}`}>
             {icon}
         </div>
         <div>
             <p className="text-sm text-slate-500 font-medium">{title}</p>
-            <div className="text-2xl font-bold text-slate-800">{value}</div>
+            <div className="text-3xl font-bold text-slate-800">{value}</div>
         </div>
     </div>
 );
@@ -73,25 +73,25 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
             <DashboardCard 
                 title="Total Sales"
                 value={formatCurrency(stats.totalSales)}
-                icon={<RupeeIcon className="text-green-600" />}
+                icon={<RupeeIcon className="text-green-600 h-7 w-7" />}
                 iconBgClass="bg-green-100"
             />
             <DashboardCard 
                 title="Total Quantity"
                 value={`${stats.totalQuantity.toLocaleString()} kg`}
-                icon={<WeightIcon className="text-blue-600" />}
+                icon={<WeightIcon className="text-blue-600 h-7 w-7" />}
                 iconBgClass="bg-blue-100"
             />
              <DashboardCard 
                 title="Total Due"
                 value={formatCurrency(stats.totalDue)}
-                icon={<ExclamationCircleIcon className="text-red-600" />}
+                icon={<ExclamationCircleIcon className="text-red-600 h-7 w-7" />}
                 iconBgClass="bg-red-100"
             />
             <DashboardCard 
                 title="Total Transactions"
                 value={stats.totalTransactions.toString()}
-                icon={<ChartIcon className="text-indigo-600" />}
+                icon={<ChartIcon className="text-indigo-600 h-7 w-7" />}
                 iconBgClass="bg-indigo-100"
             />
         </div>

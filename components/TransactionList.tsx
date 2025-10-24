@@ -60,7 +60,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 }) => {
     if (transactions.length === 0) {
         return (
-            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-md border-2 border-dashed border-slate-200">
+            <div className="text-center py-16 px-6 bg-white rounded-xl shadow-lg border-2 border-dashed border-slate-200">
                 <DocumentPlusIcon />
                 <h3 className="text-xl font-semibold text-slate-700 mt-4">No transactions here.</h3>
                 <p className="text-slate-500 mt-2">Click the "Add New" button to get started!</p>
@@ -80,10 +80,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
         const reminderTooltip = reminder ? `Reminder set for: ${new Date(reminder.remindAt).toLocaleString()}` : 'Set a reminder for this transaction';
 
         return (
-            <div className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 mb-4 overflow-hidden border ${selectedIds.has(t.id) ? 'border-primary-500 ring-2 ring-primary-500/50' : 'border-slate-200/80'}`}>
-                <div className="p-4 border-l-4 border-primary-500">
+            <div className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 mb-4 overflow-hidden border ${selectedIds.has(t.id) ? 'border-primary-500 ring-2 ring-primary-500/50' : 'border-slate-200/80'}`}>
+                <div className="p-5 border-l-4 border-primary-500">
                      <div className="flex justify-between items-start">
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-4">
                            {isEditMode && (
                                 <input
                                     type="checkbox"
@@ -125,7 +125,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                             </div>
                         )}
                     </div>
-                    <div className="border-t my-3 border-slate-100"></div>
+                    <div className="border-t my-4 border-slate-100"></div>
                     <div className="text-sm text-slate-600 space-y-2">
                          <div className="flex justify-between">
                             <span>Quantity:</span>
@@ -153,7 +153,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         </div>
                     </div>
                     {t.notes && (
-                        <div className="mt-4 p-3 bg-primary-50 rounded-md text-sm text-slate-700 font-serif border border-primary-200/80">
+                        <div className="mt-4 p-3 bg-primary-500/10 rounded-md text-sm text-slate-700 font-serif border border-primary-200/80">
                             <p><strong className="not-italic font-semibold text-slate-800">Note:</strong> <span className="italic">{t.notes}</span></p>
                         </div>
                     )}
@@ -185,10 +185,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
             </div>
 
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden border border-slate-200/80">
+            <div className="hidden md:block bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200/80">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-slate-500">
-                        <thead className="text-xs text-slate-700 uppercase bg-slate-100/80">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-100">
                             <tr>
                                 {isEditMode && (
                                     <th scope="col" className="px-4 py-4">
@@ -201,13 +201,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                         />
                                     </th>
                                 )}
-                                <th scope="col" className="px-4 py-4 font-semibold">Customer</th>
-                                <th scope="col" className="px-4 py-4 font-semibold">Item</th>
-                                <th scope="col" className="px-4 py-4 font-semibold">Details</th>
-                                <th scope="col" className="px-4 py-4 font-semibold text-right">Payment</th>
-                                <th scope="col" className="px-4 py-4 font-semibold text-right">Total</th>
-                                <th scope="col" className="px-4 py-4 font-semibold">Date</th>
-                                <th scope="col" className="px-4 py-4 font-semibold text-center">Actions</th>
+                                <th scope="col" className="px-6 py-4 font-semibold">Customer</th>
+                                <th scope="col" className="px-6 py-4 font-semibold">Item</th>
+                                <th scope="col" className="px-6 py-4 font-semibold">Details</th>
+                                <th scope="col" className="px-6 py-4 font-semibold text-right">Payment</th>
+                                <th scope="col" className="px-6 py-4 font-semibold text-right">Total</th>
+                                <th scope="col" className="px-6 py-4 font-semibold">Date</th>
+                                <th scope="col" className="px-6 py-4 font-semibold text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -221,7 +221,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
                                 return (
                                 <React.Fragment key={t.id}>
-                                    <tr className={`border-b transition-colors duration-200 ${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-primary-50/50'}`}>
+                                    <tr className={`border-b border-slate-200/80 transition-colors duration-200 ${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-slate-50'}`}>
                                         {isEditMode && (
                                             <td className="px-4 py-4 align-top">
                                                  <input
@@ -232,7 +232,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                                 />
                                             </td>
                                         )}
-                                        <td className="px-4 py-4 font-medium text-slate-900 align-top">
+                                        <td className="px-6 py-4 font-medium text-slate-900 align-top">
                                             <div className="flex items-center gap-2">
                                                  <span>{t.customerName}</span>
                                                 {isUnsynced && (
@@ -243,12 +243,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                             </div>
                                             {t.customerMobile && <div className="text-xs font-normal text-slate-500 mt-0.5">{t.customerMobile}</div>}
                                         </td>
-                                        <td className="px-4 py-4 align-top font-medium text-slate-800">{t.item}</td>
-                                        <td className="px-4 py-4 align-top text-slate-600">
+                                        <td className="px-6 py-4 align-top font-medium text-slate-800">{t.item}</td>
+                                        <td className="px-6 py-4 align-top text-slate-600">
                                              <div className="text-sm">{t.quantity.toFixed(2)} kg</div>
                                              <div className="text-xs">@ {formatCurrency(t.rate)}/kg</div>
                                         </td>
-                                        <td className="px-4 py-4 text-right align-top font-medium text-slate-700">
+                                        <td className="px-6 py-4 text-right align-top font-medium text-slate-700">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <StatusBadge status={t.paymentStatus} />
                                                 {t.paymentStatus === 'partial' && (
@@ -263,9 +263,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4 text-right font-bold text-primary-600 align-top text-base">{formatCurrency(t.total)}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
-                                        <td className="px-4 py-4 text-center align-top">
+                                        <td className="px-6 py-4 text-right font-bold text-primary-600 align-top text-base">{formatCurrency(t.total)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
+                                        <td className="px-6 py-4 text-center align-top">
                                             <div className="flex justify-center items-center space-x-1">
                                                 {isEditMode && (
                                                     <>
@@ -286,10 +286,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                         </td>
                                     </tr>
                                     {t.notes && (
-                                        <tr className={`${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-primary-50/50'} border-b`}>
+                                        <tr className={`${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-slate-50'} border-b border-slate-200/80`}>
                                             {isEditMode && <td className="px-4"></td>}
-                                            <td colSpan={7} className="px-6 py-3 text-sm text-slate-700">
-                                                <div className="p-2 bg-yellow-50 rounded-md border border-yellow-200">
+                                            <td colSpan={7} className="px-8 py-3 text-sm text-slate-700">
+                                                <div className="p-2 bg-yellow-50 rounded-md border border-yellow-200/80">
                                                     <strong className="font-semibold text-slate-800">Note:</strong> <span className="italic">{t.notes}</span>
                                                 </div>
                                             </td>

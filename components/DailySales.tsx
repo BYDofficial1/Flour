@@ -26,15 +26,15 @@ const DailySales: React.FC<DailySalesProps> = ({ transactions }) => {
     }, [transactions]);
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg h-full">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg h-full border border-slate-200/80">
             <h3 className="text-lg font-bold text-slate-800 mb-4">
                 Daily Sales Breakdown
             </h3>
             {dailyData.length > 0 ? (
                 <div>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2 max-h-[20rem] overflow-y-auto pr-2">
                         {dailyData.map(({ date, total }) => (
-                            <li key={date} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg hover:bg-slate-100 transition-colors">
+                            <li key={date} className="flex justify-between items-center bg-slate-50 p-4 rounded-lg hover:bg-slate-100 transition-colors">
                                 <span className="text-sm font-medium text-slate-600">
                                     {new Date(date).toLocaleDateString('en-IN', {
                                         year: 'numeric',

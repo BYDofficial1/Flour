@@ -32,8 +32,8 @@ const NavItem: React.FC<{
             onClick={onClick}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left ${
                 isActive
-                    ? 'bg-primary-500 text-white font-bold shadow-lg'
-                    : 'text-slate-300 hover:bg-primary-500/20 hover:text-white'
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold shadow-lg'
+                    : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
             }`}
             aria-current={isActive ? 'page' : undefined}
         >
@@ -62,16 +62,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 h-full w-64 bg-stone-800 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out shadow-lg flex flex-col justify-between ${
+                className={`fixed top-0 left-0 h-full w-64 bg-slate-900 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col justify-between ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
-                } lg:translate-x-0 lg:shadow-xl`}
+                } lg:translate-x-0`}
             >
                 <div> {/* Top section */}
                     <div className="flex justify-between items-center mb-8">
                          <div className="flex items-center gap-2">
                             <button 
                                 onClick={onToggleEditMode} 
-                                className="cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-800 focus-visible:ring-white rounded-full p-1" 
+                                className="cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-white rounded-full p-1" 
                                 title="Toggle Edit Mode"
                                 aria-label="Toggle Edit Mode"
                             >

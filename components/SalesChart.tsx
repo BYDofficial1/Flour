@@ -198,10 +198,10 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
     }> = ({ isActive, onClick, children }) => (
          <button
             onClick={onClick}
-            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
                 isActive 
-                ? 'bg-primary-500 text-white shadow-sm' 
-                : 'text-slate-600 hover:bg-slate-200'
+                ? 'bg-white shadow-md text-primary-600' 
+                : 'text-slate-600 hover:bg-slate-200/50'
             }`}
         >
             {children}
@@ -209,7 +209,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
     )
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-primary-200/50">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200/80">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                  <h3 className="text-lg font-bold text-slate-800">Cumulative Growth</h3>
                 <div className="flex items-center space-x-1 p-1 bg-slate-100 rounded-lg">

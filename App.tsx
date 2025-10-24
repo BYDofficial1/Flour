@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction, Reminder, Settings } from './types';
 import Header from './components/Header';
@@ -502,10 +503,10 @@ const App: React.FC = () => {
                         const triggerNotification = (attempt: number) => {
                             if (notificationPermission === 'granted') {
                                 // Fix: Removed 'renotify' as it's not a standard NotificationOption property.
+                                // FIX: The 'vibrate' option is deprecated and not a standard Notification property.
                                 new Notification('Transaction Reminder', {
                                     body: notificationBody,
                                     tag: `${transaction.id}-${attempt}`, // Unique tag for each attempt
-                                    vibrate: [200, 100, 200], // Vibrate pattern for mobile
                                 });
                             } else {
                                 addNotification(notificationBody, 'info');
@@ -861,7 +862,7 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-primary-50">
+        <div className="flex min-h-screen bg-slate-50">
             <Sidebar 
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}

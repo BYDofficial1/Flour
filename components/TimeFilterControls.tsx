@@ -15,8 +15,8 @@ const TimeFilterButton: React.FC<TimeFilterButtonProps> = ({ period, label, acti
         onClick={() => setPeriod(period)}
         className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${
             activePeriod === period
-                ? 'bg-primary-500 text-white shadow'
-                : 'text-slate-600 hover:bg-white hover:text-primary-600'
+                ? 'bg-white text-primary-600 shadow-md'
+                : 'text-slate-600 hover:bg-slate-200/50'
         }`}
     >
         {label}
@@ -47,7 +47,7 @@ const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({ timeFilter, set
 
     return (
         <div className="w-full">
-            <div className={`flex items-center space-x-1 p-1 ${isPrimary ? 'bg-slate-200/60' : 'bg-white border'} rounded-lg justify-center md:justify-end`}>
+            <div className={`flex items-center space-x-1 p-1 ${isPrimary ? 'bg-slate-100' : 'bg-slate-100 border'} rounded-lg justify-center md:justify-end`}>
                 <TimeFilterButton period="today" label="Today" activePeriod={timeFilter.period} setPeriod={handlePeriodChange} />
                 <TimeFilterButton period="week" label="Week" activePeriod={timeFilter.period} setPeriod={handlePeriodChange} />
                 <TimeFilterButton period="month" label="Month" activePeriod={timeFilter.period} setPeriod={handlePeriodChange} />
@@ -56,7 +56,7 @@ const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({ timeFilter, set
             </div>
 
             {timeFilter.period === 'custom' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-md mt-4 border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-md mt-4 border border-slate-200/80">
                     <div>
                         <label htmlFor="startDate" className="block text-sm font-medium text-slate-700">Start Date</label>
                         <input 
