@@ -70,7 +70,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                         type="month"
                         value={selectedDate}
                         onChange={e => setSelectedDate(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
                     />
                     <button
                         onClick={handleExport}

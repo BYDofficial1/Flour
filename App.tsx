@@ -205,9 +205,22 @@ const App: React.FC = () => {
     
     // Main effect for app initialization
     useEffect(() => {
-        // Step 1: Load from cache and render UI immediately
+        // Step 1: Load from cache to render UI immediately behind the loader
         loadFromCache();
-        setIsLoading(false); // This will trigger the loader fade-out
+
+        // Prepare promises for loader animations and minimum display time
+        const typingPromise = new Promise<void>(resolve => {
+            const timeout = setTimeout(() => resolve(), 6000); // Failsafe
+            window.addEventListener('typingAnimationComplete', () => {
+                clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+        });
+        const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 5000));
+
+        Promise.all([typingPromise, timeoutPromise]).then(() => {
+            setIsLoading(false); // Hide loader after animations and delay
+        });
 
         // Step 2: Fetch latest data from server in the background
         fetchFromServerAndCache();
@@ -847,8 +860,6 @@ const App: React.FC = () => {
                 setCurrentPage={setCurrentPage}
                 isEditMode={isEditMode}
                 onToggleEditMode={toggleEditMode}
-                notificationPermission={notificationPermission}
-                onRequestNotifications={requestNotificationPermission}
             />
             <div className="flex-1 lg:pl-64">
                 <Header 
@@ -902,6 +913,8 @@ const App: React.FC = () => {
                                     currentSettings={settings}
                                     onSave={handleSaveSettings}
                                     isEditMode={isEditMode}
+                                    notificationPermission={notificationPermission}
+                                    onRequestNotifications={requestNotificationPermission}
                                 />
                              )}
                              {currentPage === 'reports' && (

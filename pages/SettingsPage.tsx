@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import type { Settings } from '../types';
 import { useNotifier } from '../context/NotificationContext';
+import { BellIcon } from '../components/icons/BellIcon';
 
 interface SettingsPageProps {
     currentSettings: Settings;
     onSave: (newSettings: Settings) => void;
     isEditMode: boolean;
+    notificationPermission: NotificationPermission;
+    onRequestNotifications: () => void;
 }
 
 const ToggleSwitch: React.FC<{
@@ -36,7 +39,7 @@ const ToggleSwitch: React.FC<{
 );
 
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, isEditMode }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, isEditMode, notificationPermission, onRequestNotifications }) => {
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const { addNotification } = useNotifier();
 
@@ -58,7 +61,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
 
             <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-primary-200/50 space-y-6">
                 <div>
-                    <h3 className="text-lg font-semibold text-slate-800">Notifications</h3>
+                    <h3 className="text-lg font-semibold text-slate-800">Alerts & Sounds</h3>
                     <p className="text-sm text-slate-500 mt-1 mb-4">
                         Control how you receive alerts for transaction reminders.
                     </p>
@@ -70,6 +73,26 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                             onChange={(enabled) => handleSettingChange('soundEnabled', enabled)}
                             disabled={!isEditMode}
                         />
+
+                        <div className={`flex items-center justify-between p-4 rounded-lg bg-slate-50 border ${!isEditMode && notificationPermission !== 'granted' ? 'opacity-60' : ''}`}>
+                            <span className="font-semibold text-slate-700">Browser Notifications</span>
+                            {notificationPermission === 'granted' ? (
+                                <span className="text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">Enabled</span>
+                            ) : (
+                                <button
+                                    onClick={onRequestNotifications}
+                                    disabled={!isEditMode || notificationPermission === 'denied'}
+                                    className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                                >
+                                    {notificationPermission === 'denied' ? 'Permission Denied' : 'Enable'}
+                                </button>
+                            )}
+                        </div>
+                         {notificationPermission === 'denied' && (
+                            <p className="text-xs text-red-600 mt-2 px-1">
+                                You have blocked notifications. To re-enable them, you must go into your browser's site settings for this page.
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -83,13 +106,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                         </button>
                     </div>
                 )}
-                 {!isEditMode && (
-                    <div className="pt-6 border-t border-slate-200">
-                        <p className="text-sm text-center text-slate-600 bg-primary-50 p-3 rounded-lg border border-primary-200">
-                           Click the wheat icon in the sidebar to enable Edit Mode and change settings.
-                        </p>
-                    </div>
-                 )}
             </div>
         </div>
     );

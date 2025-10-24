@@ -91,6 +91,16 @@
         outline-offset: 2px !important;
     }
 
+    /* Fix for browser autofill styles messing with text color */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px rgb(var(--color-primary-50)) inset !important;
+        -webkit-text-fill-color: #1e293b !important; /* Corresponds to slate-800 */
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
     /* --- Loading Screen Styles --- */
     #app-loader {
         position: fixed;
@@ -111,7 +121,7 @@
         height: 6rem; /* 96px */
         color: #f59e0b; /* amber-500 */
         margin-bottom: 2rem;
-        animation: pulse-glow 2.5s infinite ease-in-out;
+        animation: pulse-glow 2.5s ease-in-out 2 forwards; /* Run twice (5s) and stop */
     }
     .loader-text {
         color: #a8a29e; /* stone-400 */
@@ -200,12 +210,20 @@
       document.addEventListener('DOMContentLoaded', () => {
           const textToType = "Malik Shahzaib Mukhtiar";
           const typingElement = document.querySelector('.typing-text');
+          if (!typingElement) return;
+
           let i = 0;
+          const typingDuration = 3000; // 3 seconds for typing
+          const charInterval = typingDuration / textToType.length;
+
           function typeWriter() {
               if (i < textToType.length) {
                   typingElement.innerHTML += textToType.charAt(i);
                   i++;
-                  setTimeout(typeWriter, 100 + Math.random() * 50);
+                  setTimeout(typeWriter, charInterval);
+              } else {
+                  // Signal that the animation is complete
+                  window.dispatchEvent(new Event('typingAnimationComplete'));
               }
           }
           typeWriter();

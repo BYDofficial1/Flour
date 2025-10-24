@@ -13,6 +13,10 @@ import { CloseIcon } from '../components/icons/CloseIcon';
 
 type CalculatorType = 'maund' | 'rate';
 const CALC_CACHE_KEY = 'saved_calculations';
+const formInputClasses = "mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-800 placeholder-slate-500";
+const smallFormInputClasses = formInputClasses.replace('text-lg', 'text-base').replace('py-3', 'py-2');
+const smallTextAreaClasses = smallFormInputClasses + " leading-relaxed";
+
 
 const InputField = ({ id, label, value, onChange, placeholder, error, type = 'number' }: { id: string, label: string, value: string, onChange: (val: string) => void, placeholder: string, error?: string, type?: string }) => (
     <div>
@@ -23,7 +27,7 @@ const InputField = ({ id, label, value, onChange, placeholder, error, type = 'nu
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className="mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all text-slate-800"
+            className={formInputClasses}
             style={{ MozAppearance: 'textfield' }}
         />
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
@@ -42,14 +46,17 @@ const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: stri
         <div className="mt-6 p-4 bg-primary-50 border-t-2 border-primary-200 rounded-b-xl">
             <h4 className="font-semibold text-slate-700 mb-4">Save Calculation</h4>
             <div className="space-y-4">
-                <InputField
-                    id="saveCustomerName"
-                    label="Customer Name (Optional)"
-                    value={customerName}
-                    onChange={setCustomerName}
-                    placeholder="Enter customer name"
-                    type="text"
-                />
+                 <div>
+                    <label htmlFor="saveCustomerName" className="block text-sm font-medium text-slate-700">Customer Name (Optional)</label>
+                    <input
+                        type="text"
+                        id="saveCustomerName"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        placeholder="Enter customer name"
+                        className={smallFormInputClasses}
+                    />
+                </div>
                  <div>
                     <label htmlFor="saveNotes" className="block text-sm font-medium text-slate-700">Notes (Optional)</label>
                     <textarea 
@@ -57,7 +64,7 @@ const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: stri
                         value={notes} 
                         onChange={e => setNotes(e.target.value)} 
                         rows={3} 
-                        className="mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all text-slate-800"
+                        className={smallTextAreaClasses}
                         placeholder="Add any details..."
                     />
                 </div>
@@ -274,7 +281,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                             }}
                             onKeyPress={handleKeyPress}
                             placeholder="Weight (kg)"
-                            className="sm:col-span-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all text-slate-800"
+                            className={`sm:col-span-1 block w-full ${formInputClasses}`}
                         />
                          <button
                             onClick={handleAddBag}
@@ -436,13 +443,19 @@ const EditCalculationModal: React.FC<{
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><CloseIcon /></button>
                 </div>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    <InputField id="editCustomerName" label="Customer Name" value={customerName} onChange={setCustomerName} placeholder="Enter customer name" type="text" />
-                    <InputField id="editPricePerMaund" label="Price per Maan (40 kg)" value={pricePerMaund} onChange={setPricePerMaund} placeholder="e.g., 2200" />
+                    <div>
+                        <label htmlFor="editCustomerName" className="block text-sm font-medium text-slate-700">Customer Name</label>
+                        <input type="text" id="editCustomerName" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter customer name" className={smallFormInputClasses} />
+                    </div>
+                     <div>
+                        <label htmlFor="editPricePerMaund" className="block text-sm font-medium text-slate-700">Price per Maan (40 kg)</label>
+                        <input type="number" id="editPricePerMaund" value={pricePerMaund} onChange={e => setPricePerMaund(e.target.value)} placeholder="e.g., 2200" className={smallFormInputClasses} />
+                    </div>
                     
                     <div>
                         <label htmlFor="editBagWeight" className="block text-sm font-medium text-slate-700">Add Bag Weight</label>
                         <div className="mt-1 flex gap-2">
-                            <input type="number" id="editBagWeight" value={currentWeight} onChange={(e) => { setCurrentWeight(e.target.value); if (error) setError(null); }} placeholder="Weight (kg)" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-base focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                            <input type="number" id="editBagWeight" value={currentWeight} onChange={(e) => { setCurrentWeight(e.target.value); if (error) setError(null); }} placeholder="Weight (kg)" className={smallFormInputClasses} />
                             <button onClick={handleAddBag} className="px-4 py-2 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600">Add</button>
                         </div>
                         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
@@ -487,7 +500,7 @@ const EditCalculationModal: React.FC<{
 
                     <div>
                         <label htmlFor="editNotes" className="block text-sm font-medium text-slate-700">Notes</label>
-                        <textarea id="editNotes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-base focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Add any details..." />
+                        <textarea id="editNotes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={smallTextAreaClasses} placeholder="Add any details..." />
                     </div>
                 </div>
                 <div className="flex justify-end p-4 bg-slate-50 rounded-b-lg gap-2">

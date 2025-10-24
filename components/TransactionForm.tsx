@@ -125,6 +125,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             {label}
         </button>
     );
+    
+    const formInputClasses = "mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm placeholder-slate-500 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500";
+
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 transition-opacity duration-300 animate-[fadeIn_0.2s_ease-out_forwards]">
@@ -144,15 +147,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
                     <div>
                         <label htmlFor="customerName" className="block text-sm font-medium text-slate-700">Customer Name</label>
-                        <input type="text" id="customerName" value={customerName} onChange={e => setCustomerName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm placeholder-slate-400" />
+                        <input type="text" id="customerName" value={customerName} onChange={e => setCustomerName(e.target.value)} required className={formInputClasses} />
                     </div>
                      <div>
                         <label htmlFor="customerMobile" className="block text-sm font-medium text-slate-700">Customer Mobile (Optional)</label>
-                        <input type="tel" id="customerMobile" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm placeholder-slate-400" />
+                        <input type="tel" id="customerMobile" value={customerMobile} onChange={e => setCustomerMobile(e.target.value)} className={formInputClasses} />
                     </div>
                     <div>
                         <label htmlFor="item" className="block text-sm font-medium text-slate-700">Item / Service</label>
-                        <select id="item" value={item} onChange={e => setItem(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm">
+                        <select id="item" value={item} onChange={e => setItem(e.target.value)} className={formInputClasses}>
                             <option>Wheat Grinding</option>
                             <option>Flour Sale</option>
                             <option>Daliya Grinding</option>
@@ -163,35 +166,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="quantity" className="block text-sm font-medium text-slate-700">Quantity (kg)</label>
-                            <input type="number" id="quantity" step="0.01" value={quantity} onChange={e => handleNumberChange(e.target.value, 'quantity')} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="number" id="quantity" step="0.01" value={quantity} onChange={e => handleNumberChange(e.target.value, 'quantity')} required className={formInputClasses} />
                             {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
                         </div>
                         <div>
                             <label htmlFor="rate" className="block text-sm font-medium text-slate-700">Rate (Rs / kg)</label>
-                            <input type="number" id="rate" step="0.01" value={rate} onChange={e => handleNumberChange(e.target.value, 'rate')} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="number" id="rate" step="0.01" value={rate} onChange={e => handleNumberChange(e.target.value, 'rate')} required className={formInputClasses} />
                             {errors.rate && <p className="text-red-500 text-xs mt-1">{errors.rate}</p>}
                         </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="grindingCost" className="block text-sm font-medium text-slate-700">Grinding Cost (Optional)</label>
-                            <input type="number" id="grindingCost" step="0.01" value={grindingCost} onChange={e => handleNumberChange(e.target.value, 'grindingCost')} className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="number" id="grindingCost" step="0.01" value={grindingCost} onChange={e => handleNumberChange(e.target.value, 'grindingCost')} className={formInputClasses} />
                             {errors.grindingCost && <p className="text-red-500 text-xs mt-1">{errors.grindingCost}</p>}
                         </div>
                          <div>
                             <label htmlFor="cleaningCost" className="block text-sm font-medium text-slate-700">Cleaning Cost (Optional)</label>
-                            <input type="number" id="cleaningCost" step="0.01" value={cleaningCost} onChange={e => handleNumberChange(e.target.value, 'cleaningCost')} className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="number" id="cleaningCost" step="0.01" value={cleaningCost} onChange={e => handleNumberChange(e.target.value, 'cleaningCost')} className={formInputClasses} />
                             {errors.cleaningCost && <p className="text-red-500 text-xs mt-1">{errors.cleaningCost}</p>}
                         </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="date" className="block text-sm font-medium text-slate-700">Date</label>
-                            <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} required className={formInputClasses} />
                         </div>
                         <div>
                             <label htmlFor="time" className="block text-sm font-medium text-slate-700">Time</label>
-                            <input type="time" id="time" value={time} onChange={e => setTime(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="time" id="time" value={time} onChange={e => setTime(e.target.value)} required className={formInputClasses} />
                         </div>
                     </div>
                     <div>
@@ -205,13 +208,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                     {paymentStatus === 'partial' && (
                         <div>
                             <label htmlFor="paidAmount" className="block text-sm font-medium text-slate-700">Amount Paid</label>
-                            <input type="number" id="paidAmount" step="0.01" value={paidAmount} onChange={e => handleNumberChange(e.target.value, 'paidAmount')} required className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+                            <input type="number" id="paidAmount" step="0.01" value={paidAmount} onChange={e => handleNumberChange(e.target.value, 'paidAmount')} required className={formInputClasses} />
                             {errors.paidAmount && <p className="text-red-500 text-xs mt-1">{errors.paidAmount}</p>}
                         </div>
                     )}
                     <div>
                         <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Notes (Optional)</label>
-                        <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="mt-1 block w-full px-3 py-2 bg-white text-slate-800 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm placeholder-slate-400" placeholder="Any extra details..."></textarea>
+                        <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={formInputClasses} placeholder="Any extra details..."></textarea>
                     </div>
 
                      <div className="bg-white p-4 rounded-lg text-center border border-primary-200 shadow-inner">
