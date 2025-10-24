@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v9'; // Bumped version to invalidate old cache
+const CACHE_NAME = 'atta-chakki-hisab-v11'; // Bumped version to invalidate old cache
 const CACHE_FILES = [
     // Core
     '/',
@@ -54,6 +54,7 @@ const CACHE_FILES = [
     '/components/icons/DeleteIcon.tsx',
     '/components/icons/DocumentPlusIcon.tsx',
     '/components/icons/DocumentTextIcon.tsx',
+    '/components/icons/DotsVerticalIcon.tsx',
     '/components/icons/EditIcon.tsx',
     '/components/icons/ExclamationCircleIcon.tsx',
     '/components/icons/ExportIcon.tsx',
@@ -64,6 +65,7 @@ const CACHE_FILES = [
     '/components/icons/ReceiptIcon.tsx',
     '/components/icons/RupeeIcon.tsx',
     '/components/icons/SearchIcon.tsx',
+    '/components/icons/SortIcon.tsx',
     '/components/icons/SyncIcon.tsx',
     '/components/icons/TrendingUpIcon.tsx',
     '/components/icons/WarningIcon.tsx',

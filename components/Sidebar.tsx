@@ -1,12 +1,9 @@
-
-
 import React, { Fragment } from 'react';
 import { ChartIcon } from './icons/ChartIcon';
 import { ListBulletIcon } from './icons/ListBulletIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
-import { BellIcon } from './icons/BellIcon';
 import { CogIcon } from './icons/CogIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
 
@@ -68,20 +65,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
             >
                 <div> {/* Top section */}
                     <div className="flex justify-between items-center mb-8">
-                         <div className="flex items-center gap-2">
-                            <button 
-                                onClick={onToggleEditMode} 
-                                className="cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:ring-white rounded-full p-1" 
+                         <div className="flex-grow flex items-center gap-2">
+                            <button
+                                onClick={onToggleEditMode}
+                                className="p-2 rounded-full hover:bg-slate-800/60 transition-colors"
                                 title="Toggle Edit Mode"
-                                aria-label="Toggle Edit Mode"
                             >
-                                <WheatIcon isEditMode={isEditMode}/>
+                                <WheatIcon isEditMode={isEditMode} />
                             </button>
                             <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-yellow-300">
                                Atta Chakki Hisab
                             </span>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white lg:hidden">
+                        <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white lg:hidden -mr-2 flex-shrink-0">
                             <CloseIcon />
                         </button>
                     </div>
@@ -121,11 +117,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                         </ul>
                     </nav>
                 </div>
-
-                <div> {/* Bottom section */}
-                     
-                </div>
-
             </aside>
         </Fragment>
     );

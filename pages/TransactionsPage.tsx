@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useCallback } from 'react';
 import type { Transaction, Reminder } from '../types';
 import type { TimeFilter } from '../App';
@@ -67,12 +64,12 @@ interface TransactionsPageProps {
     statusFilter: Transaction['paymentStatus'][];
     setStatusFilter: (statuses: Transaction['paymentStatus'][]) => void;
     unsyncedIds: Set<string>;
-    isEditMode: boolean;
     onSetReminder: (transaction: Transaction) => void;
     reminders: Reminder[];
     onBulkDelete: (ids: string[]) => void;
     onBulkUpdate: (ids: string[], newStatus: Transaction['paymentStatus']) => void;
     onBulkSetReminder: (ids: string[], remindAt: Date) => void;
+    isEditMode: boolean;
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
@@ -87,17 +84,18 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     statusFilter, 
     setStatusFilter, 
     unsyncedIds, 
-    isEditMode,
     onSetReminder,
     reminders,
     onBulkDelete,
     onBulkUpdate,
-    onBulkSetReminder
+    onBulkSetReminder,
+    isEditMode
 }) => {
     const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(new Set());
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
 
     const handleSelectOne = useCallback((id: string) => {
         setSelectedTransactionIds(prev => {
@@ -119,8 +117,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         }
     }, [transactions]);
     
-    const handleClearSelection = () => {
+    const handleClearSelection = useCallback(() => {
         setSelectedTransactionIds(new Set());
+    }, []);
+
+    const handleToggleBulkSelect = () => {
+        // When turning bulk select off, clear any existing selections
+        if (isBulkSelectMode) {
+            handleClearSelection();
+        }
+        setIsBulkSelectMode(!isBulkSelectMode);
     };
 
     const handleConfirmBulkDelete = () => {
@@ -162,12 +168,19 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     {isEditMode && (
                         <div className="w-full sm:w-auto flex items-center gap-2">
                             <button
+                                onClick={handleToggleBulkSelect}
+                                className={`w-1/2 sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg shadow-md transition-colors font-semibold ${isBulkSelectMode ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-600 hover:bg-slate-700'}`}
+                                aria-label={isBulkSelectMode ? 'Cancel bulk selection' : 'Enable bulk selection'}
+                            >
+                                {isBulkSelectMode ? 'Cancel' : 'Bulk Edit'}
+                            </button>
+                            <button
                                 onClick={() => exportTransactionsToTxt(transactions)}
-                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-transform transform hover:scale-105"
+                                className="w-1/2 sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-transform transform hover:scale-105"
                                 aria-label="Export transactions as a text file"
                             >
                                 <ExportIcon />
-                                <span className="font-semibold">Export TXT</span>
+                                <span className="font-semibold hidden sm:inline">Export</span>
                             </button>
                         </div>
                     )}
@@ -184,13 +197,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 unsyncedIds={unsyncedIds}
-                isEditMode={isEditMode}
+                isBulkSelectMode={isBulkSelectMode}
                 onSetReminder={onSetReminder}
                 reminders={reminders}
                 selectedIds={selectedTransactionIds}
                 onSelectOne={handleSelectOne}
                 onSelectAll={handleSelectAll}
+                isEditMode={isEditMode}
             />
+            
             {isEditMode && (
                 <button
                     onClick={openModal}
@@ -202,7 +217,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     <PlusIcon />
                 </button>
             )}
-            {isEditMode && selectedTransactionIds.size > 0 && (
+            
+            {selectedTransactionIds.size > 0 && (
                 <BulkActionBar
                     count={selectedTransactionIds.size}
                     onClear={handleClearSelection}

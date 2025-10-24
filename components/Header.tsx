@@ -12,9 +12,10 @@ interface HeaderProps {
     unsyncedCount: number;
     onSync: () => void;
     isSupabaseConfigured: boolean;
+    isEditMode: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyncedCount, onSync, isSupabaseConfigured }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyncedCount, onSync, isSupabaseConfigured, isEditMode }) => {
     return (
         <header className="bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-40 border-b border-slate-700/80">
             <div className="container mx-auto px-4 md:px-6 py-5 flex items-center justify-between">
@@ -23,8 +24,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyn
                         <MenuIcon />
                     </button>
                     <div className="flex items-center gap-3">
-                         <WheatIcon />
-                        <h1 className="text-xl sm:text-2xl font-bold text-slate-100">
+                        <WheatIcon isEditMode={isEditMode} />
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-100 transition-colors">
                             Atta Chakki Hisab
                         </h1>
                     </div>

@@ -1,5 +1,6 @@
 
 
+
 export interface Transaction {
     id: string;
     customerName: string;
@@ -40,4 +41,5 @@ export type Theme = 'amber' | 'blue' | 'green' | 'slate';
 
 export interface Settings {
     soundEnabled: boolean;
+    theme: Theme;
 }

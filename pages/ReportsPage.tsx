@@ -10,6 +10,7 @@ import { WeightIcon } from '../components/icons/WeightIcon';
 import { ChartIcon } from '../components/icons/ChartIcon';
 import { ExclamationCircleIcon } from '../components/icons/ExclamationCircleIcon';
 import { DocumentPlusIcon } from '../components/icons/DocumentPlusIcon';
+import { SortIcon } from '../components/icons/SortIcon';
 
 interface ReportsPageProps {
     transactions: Transaction[];
@@ -27,8 +28,11 @@ const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: Rea
     </div>
 );
 
+type SortKey = 'date' | 'total' | 'customerName';
+
 const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
     const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().substring(0, 7)); // YYYY-MM
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
 
     const { monthlyTransactions, stats } = useMemo(() => {
         if (!selectedDate) {
@@ -44,6 +48,40 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
             return transactionDate >= startDate && transactionDate <= endDate;
         });
 
+        const sortedTransactions = [...filtered];
+
+        if (sortConfig) {
+            sortedTransactions.sort((a, b) => {
+                let aValue: string | number;
+                let bValue: string | number;
+
+                switch (sortConfig.key) {
+                    case 'date':
+                        aValue = new Date(a.date).getTime();
+                        bValue = new Date(b.date).getTime();
+                        break;
+                    case 'total':
+                        aValue = a.total;
+                        bValue = b.total;
+                        break;
+                    case 'customerName':
+                        aValue = a.customerName.toLowerCase();
+                        bValue = b.customerName.toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+
         const monthlyStats = filtered.reduce((acc, t) => {
             acc.totalSales += t.total;
             acc.totalQuantity += t.quantity;
@@ -53,14 +91,28 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
             return acc;
         }, { totalSales: 0, totalQuantity: 0, totalTransactions: filtered.length, totalDue: 0 });
         
-        return { monthlyTransactions: filtered, stats: monthlyStats };
-    }, [transactions, selectedDate]);
+        return { monthlyTransactions: sortedTransactions, stats: monthlyStats };
+    }, [transactions, selectedDate, sortConfig]);
     
     const handleExport = () => {
         const [year, month] = selectedDate.split('-').map(Number);
         const dateForReport = new Date(year, month - 1, 1);
         exportMonthlyReportToTxt(monthlyTransactions, dateForReport, stats);
     };
+
+    const requestSort = (key: SortKey) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortDirection = (key: SortKey): 'asc' | 'desc' | 'none' => {
+        if (!sortConfig || sortConfig.key !== key) return 'none';
+        return sortConfig.direction === 'ascending' ? 'asc' : 'desc';
+    }
+
 
     return (
         <div className="mt-4 space-y-6">
@@ -116,18 +168,33 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                         <table className="w-full text-sm text-left text-slate-400">
                              <thead className="text-xs text-slate-300 uppercase bg-slate-900/70">
                                 <tr>
-                                    <th scope="col" className="px-4 py-3 font-semibold">Date</th>
-                                    <th scope="col" className="px-4 py-3 font-semibold">Customer</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer rounded-tl-lg" onClick={() => requestSort('date')}>
+                                        <div className="flex items-center">
+                                            Date
+                                            <SortIcon direction={getSortDirection('date')} />
+                                        </div>
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('customerName')}>
+                                        <div className="flex items-center">
+                                            Customer
+                                            <SortIcon direction={getSortDirection('customerName')} />
+                                        </div>
+                                    </th>
                                     <th scope="col" className="px-4 py-3 font-semibold">Item</th>
                                     <th scope="col" className="px-4 py-3 font-semibold text-right">Quantity</th>
-                                    <th scope="col" className="px-4 py-3 font-semibold text-right">Total</th>
-                                    <th scope="col" className="px-4 py-3 font-semibold text-center">Status</th>
+                                    <th scope="col" className="px-4 py-3 font-semibold text-right hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('total')}>
+                                        <div className="flex items-center justify-end">
+                                            Total
+                                            <SortIcon direction={getSortDirection('total')} />
+                                        </div>
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 font-semibold text-center rounded-tr-lg">Status</th>
                                 </tr>
                              </thead>
                              <tbody>
                                 {monthlyTransactions.map(t => (
                                     <tr key={t.id} className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50">
-                                        <td className="px-4 py-3">{new Date(t.date).toLocaleDateString('en-CA')}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">{new Date(t.date).toLocaleDateString('en-CA')}</td>
                                         <td className="px-4 py-3 font-medium text-slate-200">{t.customerName}</td>
                                         <td className="px-4 py-3">{t.item}</td>
                                         <td className="px-4 py-3 text-right">{t.quantity.toFixed(2)} kg</td>

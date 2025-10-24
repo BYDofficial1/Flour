@@ -1,9 +1,5 @@
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Transaction, Reminder, Settings } from './types';
+import type { Transaction, Reminder, Settings, Theme } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
@@ -97,7 +93,6 @@ const App: React.FC = () => {
     const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isEditMode, setIsEditMode] = useState(false);
-    const editModeTimeoutRef = useRef<number | null>(null);
 
     // Sync states
     const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
@@ -118,7 +113,15 @@ const App: React.FC = () => {
     // Settings state
     const [settings, setSettings] = useState<Settings>({
         soundEnabled: true,
+        theme: 'green',
     });
+
+    const toggleEditMode = () => {
+        setIsEditMode(prev => {
+            addNotification(`Edit mode ${!prev ? 'enabled' : 'disabled'}.`, 'info');
+            return !prev;
+        });
+    };
 
     useEffect(() => {
         const savedSettings = localStorage.getItem('app-settings');
@@ -126,7 +129,12 @@ const App: React.FC = () => {
              try {
                 const parsed = JSON.parse(savedSettings);
                 if (typeof parsed === 'object' && parsed !== null) {
-                    setSettings(prev => ({ ...prev, ...parsed }));
+                    const loadedSettings: Settings = {
+                        soundEnabled: parsed.soundEnabled ?? true,
+                        theme: parsed.theme ?? 'green'
+                    };
+                    setSettings(loadedSettings);
+                    document.documentElement.className = `theme-${loadedSettings.theme}`;
                 }
             } catch (error) {
                 console.error("Failed to parse settings from cache:", error);
@@ -137,6 +145,7 @@ const App: React.FC = () => {
 
     const handleSaveSettings = (newSettings: Settings) => {
         setSettings(newSettings);
+        document.documentElement.className = `theme-${newSettings.theme}`;
         localStorage.setItem('app-settings', JSON.stringify(newSettings));
         addNotification('Settings saved!', 'success');
     };
@@ -569,41 +578,6 @@ const App: React.FC = () => {
         setIsReminderModalOpen(false);
     };
     
-    const resetEditModeTimer = useCallback(() => {
-        if (editModeTimeoutRef.current) {
-            clearTimeout(editModeTimeoutRef.current);
-        }
-        editModeTimeoutRef.current = window.setTimeout(() => {
-            setIsEditMode(false);
-        }, 120000); // 2 minutes
-    }, []);
-
-    useEffect(() => {
-        if (isEditMode) {
-            resetEditModeTimer();
-            window.addEventListener('mousemove', resetEditModeTimer);
-            window.addEventListener('keydown', resetEditModeTimer);
-        } else {
-            if (editModeTimeoutRef.current) {
-                clearTimeout(editModeTimeoutRef.current);
-            }
-            window.removeEventListener('mousemove', resetEditModeTimer);
-            window.removeEventListener('keydown', resetEditModeTimer);
-        }
-
-        return () => {
-            window.removeEventListener('mousemove', resetEditModeTimer);
-            window.removeEventListener('keydown', resetEditModeTimer);
-            if (editModeTimeoutRef.current) {
-                clearTimeout(editModeTimeoutRef.current);
-            }
-        };
-    }, [isEditMode, resetEditModeTimer]);
-
-    const toggleEditMode = () => {
-        setIsEditMode(prev => !prev);
-    };
-
     const dateFilteredTransactions = useMemo(() => {
         const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const now = new Date();
@@ -880,6 +854,7 @@ const App: React.FC = () => {
                     unsyncedCount={unsyncedCount}
                     onSync={handleSync}
                     isSupabaseConfigured={isSupabaseConfigured}
+                    isEditMode={isEditMode}
                 />
                 <main className="container mx-auto p-4 md:p-6 lg:p-8">
                      {isLoading ? (
@@ -887,7 +862,8 @@ const App: React.FC = () => {
                             {/* The loader is now in index.html, so this part can be empty or a lighter spinner if needed after initial load */}
                         </div>
                     ) : (
-                        <>
+                        <div className="animate-[fadeIn_0.3s_ease-out]">
+                             <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
                             {currentPage === 'transactions' && (
                                 <TransactionsPage
                                     transactions={filteredTransactions}
@@ -901,12 +877,12 @@ const App: React.FC = () => {
                                     statusFilter={statusFilter}
                                     setStatusFilter={setStatusFilter}
                                     unsyncedIds={unsyncedIds}
-                                    isEditMode={isEditMode}
                                     onSetReminder={handleOpenReminderModal}
                                     reminders={reminders}
                                     onBulkDelete={handleBulkDelete}
                                     onBulkUpdate={handleBulkUpdate}
                                     onBulkSetReminder={handleBulkSetReminders}
+                                    isEditMode={isEditMode}
                                 />
                             )}
                             {currentPage === 'dashboard' && (
@@ -924,15 +900,15 @@ const App: React.FC = () => {
                                 <SettingsPage
                                     currentSettings={settings}
                                     onSave={handleSaveSettings}
-                                    isEditMode={isEditMode}
                                     notificationPermission={notificationPermission}
                                     onRequestNotifications={requestNotificationPermission}
+                                    isEditMode={isEditMode}
                                 />
                              )}
                              {currentPage === 'reports' && (
                                 <ReportsPage transactions={transactions} />
                              )}
-                        </>
+                        </div>
                     )}
                 </main>
             </div>

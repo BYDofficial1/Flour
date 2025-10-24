@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -67,7 +68,7 @@ const TransactionDetailView: React.FC<{ transaction: Transaction; diffFields: Se
             <DetailRow label="Total" value={<span className="font-bold text-lg text-primary-400">{formatCurrency(transaction.total)}</span>} isDiff={diffFields.has('total')} />
             <DetailRow label="Notes" value={<span className="italic">"{transaction.notes}"</span>} isDiff={diffFields.has('notes')} />
             <div className="text-right text-xs text-slate-500 pt-1">
-                Last updated: {transaction.updatedAt ? new Date(transaction.updatedAt).toLocaleString() : 'N/A'}
+                Last updated: {transaction.updatedAt ? new Date(transaction.updatedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year:'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
             </div>
         </div>
     );
