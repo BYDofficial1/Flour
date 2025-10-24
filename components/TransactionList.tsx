@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { Transaction, Reminder } from '../types';
 import { EditIcon } from './icons/EditIcon';
@@ -46,6 +47,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
         const hasReminder = reminders.some(r => r.transactionId === t.id);
         const balanceDue = t.total - (t.paidAmount || 0);
         const canSetReminder = t.paymentStatus !== 'paid';
+        const showActions = isEditMode || canSetReminder;
 
         return (
             <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-4 overflow-hidden border border-slate-200/80">
@@ -116,19 +118,23 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                         </div>
                     )}
                 </div>
-                 {isEditMode && (
+                 {showActions && (
                     <div className="bg-slate-50/70 px-4 py-2 flex justify-end items-center space-x-2">
                         {canSetReminder && (
                             <button onClick={() => onSetReminder(t)} className={`flex items-center gap-1.5 text-sm font-semibold py-1 px-3 rounded-md transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-600 hover:bg-slate-200'}`} aria-label="Set reminder">
                                 <BellIcon isActive={hasReminder}/> {hasReminder ? 'Reminder Set' : 'Remind'}
                             </button>
                         )}
-                        <button onClick={() => onEdit(t)} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:text-blue-800 py-1 px-3 rounded-md hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
-                            <EditIcon /> Edit
-                        </button>
-                        <button onClick={() => onDelete(t.id)} className="flex items-center gap-1.5 text-sm text-red-600 font-semibold hover:text-red-800 py-1 px-3 rounded-md hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
-                            <DeleteIcon /> Delete
-                        </button>
+                        {isEditMode && (
+                            <>
+                                <button onClick={() => onEdit(t)} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:text-blue-800 py-1 px-3 rounded-md hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
+                                    <EditIcon /> Edit
+                                </button>
+                                <button onClick={() => onDelete(t.id)} className="flex items-center gap-1.5 text-sm text-red-600 font-semibold hover:text-red-800 py-1 px-3 rounded-md hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
+                                    <DeleteIcon /> Delete
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -154,7 +160,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                 <th scope="col" className="px-4 py-4 font-semibold text-right">Payment</th>
                                 <th scope="col" className="px-4 py-4 font-semibold text-right">Total</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Date</th>
-                                {isEditMode && <th scope="col" className="px-4 py-4 font-semibold text-center">Actions</th>}
+                                <th scope="col" className="px-4 py-4 font-semibold text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -200,27 +206,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                         </td>
                                         <td className="px-4 py-4 text-right font-bold text-primary-600 align-top text-base">{formatCurrency(t.total)}</td>
                                         <td className="px-4 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
-                                        {isEditMode && (
-                                            <td className="px-4 py-4 text-center align-top">
-                                                <div className="flex justify-center items-center space-x-1">
-                                                    {canSetReminder && (
-                                                        <button onClick={() => onSetReminder(t)} className={`p-2 rounded-full transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-500 hover:bg-slate-100'}`} aria-label="Set reminder">
-                                                            <BellIcon isActive={hasReminder} />
+                                        <td className="px-4 py-4 text-center align-top">
+                                            <div className="flex justify-center items-center space-x-1">
+                                                {canSetReminder && (
+                                                    <button onClick={() => onSetReminder(t)} className={`p-2 rounded-full transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-500 hover:bg-slate-100'}`} aria-label="Set reminder">
+                                                        <BellIcon isActive={hasReminder} />
+                                                    </button>
+                                                )}
+                                                {isEditMode && (
+                                                    <>
+                                                        <button onClick={() => onEdit(t)} className="p-2 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
+                                                            <EditIcon />
                                                         </button>
-                                                    )}
-                                                    <button onClick={() => onEdit(t)} className="p-2 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
-                                                        <EditIcon />
-                                                    </button>
-                                                    <button onClick={() => onDelete(t.id)} className="p-2 text-red-600 rounded-full hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
-                                                        <DeleteIcon />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        )}
+                                                        <button onClick={() => onDelete(t.id)} className="p-2 text-red-600 rounded-full hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
+                                                            <DeleteIcon />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
                                     {t.notes && (
                                         <tr className="bg-white border-b hover:bg-primary-50/50">
-                                            <td colSpan={isEditMode ? 7 : 6} className="px-6 py-3 text-sm text-slate-700">
+                                            <td colSpan={7} className="px-6 py-3 text-sm text-slate-700">
                                                 <div className="p-2 bg-yellow-50 rounded-md border border-yellow-200">
                                                     <strong className="font-semibold text-slate-800">Note:</strong> <span className="italic">{t.notes}</span>
                                                 </div>

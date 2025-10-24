@@ -13,7 +13,8 @@ import ConflictResolutionModal from './components/ConflictResolutionModal';
 import ReminderModal from './components/ReminderModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
-import { playNotificationSound } from './utils/sound';
+import { speak } from './utils/speech';
+import { formatCurrency } from './utils/currency';
 
 
 export type Page = 'transactions' | 'dashboard' | 'calculator';
@@ -405,8 +406,11 @@ const App: React.FC = () => {
             if (dueReminders.length > 0) {
                 dueReminders.forEach(reminder => {
                     const transaction = transactions.find(t => t.id === reminder.transactionId);
-                    if (transaction) {
-                        const notificationBody = `Reminder for ${transaction.customerName}'s transaction of ${transaction.total} Rs.`;
+                    if (transaction && transaction.paymentStatus !== 'paid') {
+                        const balanceDue = transaction.total - (transaction.paidAmount || 0);
+                        const notificationBody = `Reminder: ${transaction.customerName} has an outstanding balance of ${formatCurrency(balanceDue)}.`;
+                        const speechMessage = `Reminder for ${transaction.customerName}. Amount due is ${balanceDue} rupees.`;
+                        
                         if (notificationPermission === 'granted') {
                             new Notification('Transaction Reminder', {
                                 body: notificationBody,
@@ -416,7 +420,7 @@ const App: React.FC = () => {
                             // Fallback to an in-app toast notification if permission isn't granted
                             addNotification(notificationBody, 'info');
                         }
-                        playNotificationSound();
+                        speak(speechMessage);
                     }
                 });
                 
