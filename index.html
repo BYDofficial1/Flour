@@ -15,6 +15,8 @@
     <link rel="preconnect" href="https://aistudiocdn.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://uywayhjzjxwtkoibladb.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://rsms.me">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -70,6 +72,11 @@
         --color-primary-800: 30 41 59; --tw-color-primary-800: rgb(var(--color-primary-800));
     }
 
+    /* Set default font */
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+
     /* Hide arrows from number inputs */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
@@ -97,7 +104,7 @@
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px rgb(var(--color-primary-50)) inset !important;
-        -webkit-text-fill-color: #1e293b !important; /* Corresponds to slate-800 */
+        -webkit-text-fill-color: #0f172a !important; /* Corresponds to slate-900 */
         transition: background-color 5000s ease-in-out 0s;
     }
 
@@ -176,6 +183,9 @@
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
             colors: {
               primary: {
                 50: 'rgb(var(--color-primary-50) / <alpha-value>)',

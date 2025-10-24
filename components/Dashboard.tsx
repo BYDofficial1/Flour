@@ -13,9 +13,9 @@ interface DashboardProps {
     transactions: Transaction[];
 }
 
-const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
+const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode; iconBgClass?: string; }> = ({ title, value, icon, iconBgClass }) => (
     <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 ease-in-out flex items-center space-x-4 border border-primary-200/50">
-        <div className="bg-primary-100 p-3 rounded-full">
+        <div className={`p-3 rounded-full ${iconBgClass || 'bg-primary-100'}`}>
             {icon}
         </div>
         <div>
@@ -73,22 +73,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
             <DashboardCard 
                 title="Total Sales"
                 value={formatCurrency(stats.totalSales)}
-                icon={<RupeeIcon />}
+                icon={<RupeeIcon className="text-green-600" />}
+                iconBgClass="bg-green-100"
             />
             <DashboardCard 
                 title="Total Quantity"
                 value={`${stats.totalQuantity.toLocaleString()} kg`}
-                icon={<WeightIcon />}
+                icon={<WeightIcon className="text-blue-600" />}
+                iconBgClass="bg-blue-100"
             />
              <DashboardCard 
                 title="Total Due"
                 value={formatCurrency(stats.totalDue)}
-                icon={<ExclamationCircleIcon className="text-red-500" />}
+                icon={<ExclamationCircleIcon className="text-red-600" />}
+                iconBgClass="bg-red-100"
             />
             <DashboardCard 
                 title="Total Transactions"
                 value={stats.totalTransactions.toString()}
-                icon={<ChartIcon />}
+                icon={<ChartIcon className="text-indigo-600" />}
+                iconBgClass="bg-indigo-100"
             />
         </div>
     );

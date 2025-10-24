@@ -16,7 +16,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyncedCount, onSync, isSupabaseConfigured }) => {
     return (
-        <header className="bg-amber-50/80 backdrop-blur-lg shadow-sm sticky top-0 z-40 border-b border-primary-200/80">
+        <header className="bg-gradient-to-b from-white/80 to-primary-50/80 backdrop-blur-lg shadow-md sticky top-0 z-40 border-b border-slate-200">
             <div className="container mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button onClick={onMenuClick} className="text-slate-600 hover:text-primary-600 lg:hidden" aria-label="Open menu">

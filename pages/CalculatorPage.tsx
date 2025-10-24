@@ -13,7 +13,7 @@ import { CloseIcon } from '../components/icons/CloseIcon';
 
 type CalculatorType = 'maund' | 'rate';
 const CALC_CACHE_KEY = 'saved_calculations';
-const formInputClasses = "mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-800 placeholder-slate-500";
+const formInputClasses = "mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-900 placeholder-slate-600";
 const smallFormInputClasses = formInputClasses.replace('text-lg', 'text-base').replace('py-3', 'py-2');
 const smallTextAreaClasses = smallFormInputClasses + " leading-relaxed";
 
