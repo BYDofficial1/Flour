@@ -167,16 +167,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                             <ExportIcon />
                             <span className="font-semibold">Export TXT</span>
                         </button>
-                        {isEditMode && (
-                             <button
-                                onClick={openModal}
-                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-transform transform hover:scale-105"
-                                aria-label="Add new transaction"
-                            >
-                                <PlusIcon />
-                                <span className="font-semibold">Add New</span>
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -198,6 +188,17 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onSelectOne={handleSelectOne}
                 onSelectAll={handleSelectAll}
             />
+            {isEditMode && (
+                <button
+                    onClick={openModal}
+                    className={`fixed right-6 bg-primary-500 text-white rounded-full p-4 shadow-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-300 transform hover:scale-110 z-30 ${
+                        selectedTransactionIds.size > 0 ? 'bottom-28 lg:bottom-24' : 'bottom-6'
+                    }`}
+                    aria-label="Add new transaction"
+                >
+                    <PlusIcon />
+                </button>
+            )}
             {isEditMode && selectedTransactionIds.size > 0 && (
                 <BulkActionBar
                     count={selectedTransactionIds.size}

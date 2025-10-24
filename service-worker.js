@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v8'; // Bumped version to invalidate old cache
+const CACHE_NAME = 'atta-chakki-hisab-v9'; // Bumped version to invalidate old cache
 const CACHE_FILES = [
     // Core
     '/',
@@ -71,12 +71,14 @@ const CACHE_FILES = [
     '/components/icons/WifiIcon.tsx',
 
     // External CDNs
-    'https://aistudiocdn.com/react@^19.2.0',
-    'https://aistudiocdn.com/react-dom@^19.2.0/',
+    'https://aistudiocdn.com/react@18.2.0',
+    'https://aistudiocdn.com/react-dom@18.2.0/client',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm',
     'https://aistudiocdn.com/@google/genai@^1.27.0',
     'https://cdn.tailwindcss.com',
     'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://cdn.jsdelivr.net/npm/date-fns@3/index.min.js',
+    'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js',
 ];
 
 // Install the service worker and cache assets

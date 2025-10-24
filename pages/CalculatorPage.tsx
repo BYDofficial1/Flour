@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Calculation } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -580,7 +581,23 @@ const CalculatorPage: React.FC<{isEditMode: boolean}> = ({ isEditMode }) => {
         setIsLoading(true);
         const loadFromCache = () => {
             const saved = localStorage.getItem(CALC_CACHE_KEY);
-            setCalculations(saved ? JSON.parse(saved) : []);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) {
+                        setCalculations(parsed);
+                    } else {
+                        setCalculations([]);
+                        localStorage.removeItem(CALC_CACHE_KEY);
+                    }
+                } catch (error) {
+                    console.error("Failed to parse calculations from cache:", error);
+                    setCalculations([]);
+                    localStorage.removeItem(CALC_CACHE_KEY);
+                }
+            } else {
+                setCalculations([]);
+            }
         };
 
         if (!supabase || !navigator.onLine) {

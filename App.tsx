@@ -71,7 +71,15 @@ const toSupabase = (t: Partial<Transaction>): any => ({
 
 const getQueue = <T,>(key: string): T[] => {
     const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) return [];
+    try {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.error(`Failed to parse queue from localStorage for key "${key}":`, error);
+        localStorage.removeItem(key); // Clear corrupted data
+        return [];
+    }
 };
 
 
@@ -100,7 +108,7 @@ const App: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>([]);
 
     // Reminder and Notification states
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(Notification.permission);
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [transactionForReminder, setTransactionForReminder] = useState<Transaction | null>(null);
@@ -113,7 +121,15 @@ const App: React.FC = () => {
     useEffect(() => {
         const savedSettings = localStorage.getItem('app-settings');
         if (savedSettings) {
-            setSettings(JSON.parse(savedSettings));
+             try {
+                const parsed = JSON.parse(savedSettings);
+                if (typeof parsed === 'object' && parsed !== null) {
+                    setSettings(prev => ({ ...prev, ...parsed }));
+                }
+            } catch (error) {
+                console.error("Failed to parse settings from cache:", error);
+                localStorage.removeItem('app-settings');
+            }
         }
     }, []);
 
@@ -145,7 +161,23 @@ const App: React.FC = () => {
 
     const loadFromCache = useCallback(() => {
         const saved = localStorage.getItem('transactions');
-        setTransactions(saved ? JSON.parse(saved) : []);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    setTransactions(parsed);
+                } else {
+                    setTransactions([]);
+                    localStorage.removeItem('transactions');
+                }
+            } catch (error) {
+                console.error("Failed to parse transactions from cache:", error);
+                setTransactions([]);
+                localStorage.removeItem('transactions');
+            }
+        } else {
+            setTransactions([]);
+        }
     }, []);
 
     const fetchFromServerAndCache = useCallback(async () => {
@@ -190,7 +222,15 @@ const App: React.FC = () => {
 
         const savedReminders = localStorage.getItem('reminders');
         if (savedReminders) {
-            setReminders(JSON.parse(savedReminders));
+            try {
+                const parsed = JSON.parse(savedReminders);
+                if (Array.isArray(parsed)) {
+                    setReminders(parsed);
+                }
+            } catch (error) {
+                console.error("Failed to parse reminders from cache:", error);
+                localStorage.removeItem('reminders');
+            }
         }
 
         return () => {
