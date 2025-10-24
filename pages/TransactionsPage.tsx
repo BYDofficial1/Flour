@@ -18,9 +18,12 @@ interface TransactionsPageProps {
     setTimeFilter: (filter: TimeFilter) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    unsyncedIds: Set<string>;
+    conflictedIds: Set<string>;
+    isEditMode: boolean;
 }
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdit, onDelete, openModal, timeFilter, setTimeFilter, searchQuery, setSearchQuery }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdit, onDelete, openModal, timeFilter, setTimeFilter, searchQuery, setSearchQuery, unsyncedIds, conflictedIds, isEditMode }) => {
 
     return (
         <div className="mt-4 space-y-6">
@@ -36,7 +39,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdi
                             placeholder="Search by name or item..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-white text-slate-800 placeholder-slate-400 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2 bg-white text-slate-800 placeholder-slate-400 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                     </div>
                     <div className="w-full sm:w-auto flex items-center gap-2">
@@ -48,14 +51,16 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdi
                             <ExportIcon />
                             <span className="font-semibold">Export TXT</span>
                         </button>
-                        <button
-                            onClick={openModal}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg shadow-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-transform transform hover:scale-105"
-                            aria-label="Add new transaction"
-                        >
-                            <PlusIcon />
-                            <span className="font-semibold">Add New</span>
-                        </button>
+                        {isEditMode && (
+                             <button
+                                onClick={openModal}
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-transform transform hover:scale-105"
+                                aria-label="Add new transaction"
+                            >
+                                <PlusIcon />
+                                <span className="font-semibold">Add New</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -66,6 +71,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, onEdi
                 transactions={transactions}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                unsyncedIds={unsyncedIds}
+                conflictedIds={conflictedIds}
+                isEditMode={isEditMode}
             />
         </div>
     );

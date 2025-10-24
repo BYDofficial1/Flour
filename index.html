@@ -24,6 +24,44 @@
 }
 </script>
 <style>
+    /* Base theme variables (Amber) */
+    :root {
+        --color-primary-50: 255 251 235; --tw-color-primary-50: rgb(var(--color-primary-50));
+        --color-primary-100: 254 243 199; --tw-color-primary-100: rgb(var(--color-primary-100));
+        --color-primary-200: 253 224 71; --tw-color-primary-200: rgb(var(--color-primary-200));
+        --color-primary-400: 251 191 36; --tw-color-primary-400: rgb(var(--color-primary-400));
+        --color-primary-500: 245 158 11; --tw-color-primary-500: rgb(var(--color-primary-500));
+        --color-primary-600: 217 119 6; --tw-color-primary-600: rgb(var(--color-primary-600));
+        --color-primary-800: 146 64 14; --tw-color-primary-800: rgb(var(--color-primary-800));
+    }
+    .theme-blue {
+        --color-primary-50: 239 246 255; --tw-color-primary-50: rgb(var(--color-primary-50));
+        --color-primary-100: 219 234 254; --tw-color-primary-100: rgb(var(--color-primary-100));
+        --color-primary-200: 191 219 254; --tw-color-primary-200: rgb(var(--color-primary-200));
+        --color-primary-400: 96 165 250; --tw-color-primary-400: rgb(var(--color-primary-400));
+        --color-primary-500: 59 130 246; --tw-color-primary-500: rgb(var(--color-primary-500));
+        --color-primary-600: 37 99 235; --tw-color-primary-600: rgb(var(--color-primary-600));
+        --color-primary-800: 30 58 138; --tw-color-primary-800: rgb(var(--color-primary-800));
+    }
+     .theme-green {
+        --color-primary-50: 240 253 244; --tw-color-primary-50: rgb(var(--color-primary-50));
+        --color-primary-100: 220 252 231; --tw-color-primary-100: rgb(var(--color-primary-100));
+        --color-primary-200: 187 247 208; --tw-color-primary-200: rgb(var(--color-primary-200));
+        --color-primary-400: 74 222 128; --tw-color-primary-400: rgb(var(--color-primary-400));
+        --color-primary-500: 34 197 94; --tw-color-primary-500: rgb(var(--color-primary-500));
+        --color-primary-600: 22 163 74; --tw-color-primary-600: rgb(var(--color-primary-600));
+        --color-primary-800: 21 94 53; --tw-color-primary-800: rgb(var(--color-primary-800));
+    }
+    .theme-slate {
+        --color-primary-50: 248 250 252; --tw-color-primary-50: rgb(var(--color-primary-50));
+        --color-primary-100: 241 245 249; --tw-color-primary-100: rgb(var(--color-primary-100));
+        --color-primary-200: 226 232 240; --tw-color-primary-200: rgb(var(--color-primary-200));
+        --color-primary-400: 148 163 184; --tw-color-primary-400: rgb(var(--color-primary-400));
+        --color-primary-500: 100 116 139; --tw-color-primary-500: rgb(var(--color-primary-500));
+        --color-primary-600: 71 85 105; --tw-color-primary-600: rgb(var(--color-primary-600));
+        --color-primary-800: 30 41 59; --tw-color-primary-800: rgb(var(--color-primary-800));
+    }
+
     /* Hide arrows from number inputs */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
@@ -50,16 +88,36 @@
 
     /* Custom focus ring color */
     *:focus-visible {
-        outline: 2px solid #d97706 !important; /* amber-600 */
+        outline: 2px solid var(--tw-color-primary-600) !important;
         outline-offset: 2px !important;
     }
 </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-amber-50">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+                100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+                200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+                400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+                500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+                600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+                800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+              },
+            },
+            dropShadow: {
+              'glow': '0 0 5px rgb(var(--color-primary-500) / 0.7)',
+            }
+          }
+        }
+      }
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('service-worker.js')

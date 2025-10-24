@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { TimeFilter, TimePeriod } from '../App';
 
@@ -12,10 +13,10 @@ interface TimeFilterButtonProps {
 const TimeFilterButton: React.FC<TimeFilterButtonProps> = ({ period, label, activePeriod, setPeriod }) => (
     <button
         onClick={() => setPeriod(period)}
-        className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 ${
+        className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${
             activePeriod === period
-                ? 'bg-amber-500 text-white shadow'
-                : 'text-slate-600 hover:bg-white hover:text-amber-600'
+                ? 'bg-primary-500 text-white shadow'
+                : 'text-slate-600 hover:bg-white hover:text-primary-600'
         }`}
     >
         {label}
@@ -63,7 +64,7 @@ const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({ timeFilter, set
                             id="startDate" 
                             value={timeFilter.startDate || ''} 
                             onChange={(e) => handleDateChange(e, 'start')} 
-                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm" 
+                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" 
                         />
                     </div>
                      <div>
@@ -73,7 +74,7 @@ const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({ timeFilter, set
                             id="endDate" 
                             value={timeFilter.endDate || ''} 
                             onChange={(e) => handleDateChange(e, 'end')} 
-                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm" 
+                            className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" 
                         />
                     </div>
                 </div>

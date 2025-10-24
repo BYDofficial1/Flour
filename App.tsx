@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
-import InsightsPage from './pages/InsightsPage';
-import SettingsPage from './pages/SettingsPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import { supabase } from './utils/supabase';
@@ -14,7 +12,7 @@ import { useNotifier } from './context/NotificationContext';
 import { InformationCircleIcon } from './components/icons/InformationCircleIcon';
 
 export type TimePeriod = 'today' | 'week' | 'month' | 'all' | 'custom';
-export type Page = 'transactions' | 'dashboard' | 'calculator' | 'insights' | 'settings';
+export type Page = 'transactions' | 'dashboard' | 'calculator';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -38,7 +36,9 @@ const fromSupabase = (t: any): Transaction => ({
   date: t.date,
   customerMobile: t.customer_mobile,
   grindingCost: t.grinding_cost,
+  cleaningCost: t.cleaning_cost,
   notes: t.notes,
+  updatedAt: t.updated_at,
 });
 
 // Map camelCase from UI to snake_case for DB
@@ -52,7 +52,9 @@ const toSupabase = (t: Partial<Transaction>): any => ({
   date: t.date,
   customer_mobile: t.customerMobile,
   grinding_cost: t.grindingCost,
+  cleaning_cost: t.cleaningCost,
   notes: t.notes,
+  // Do not send `updated_at`. The database trigger will handle it.
 });
 
 const getQueue = <T,>(key: string): T[] => {
@@ -72,6 +74,8 @@ const App: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isEditMode, setIsEditMode] = useState(false);
+    const editModeTimeoutRef = useRef<number | null>(null);
 
     // New states for online/offline sync
     const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
@@ -79,12 +83,15 @@ const App: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSupabaseConfigured] = useState<boolean>(!!supabase);
+    const [unsyncedIds, setUnsyncedIds] = useState<Set<string>>(new Set());
+    const [conflictedIds, setConflictedIds] = useState<Set<string>>(new Set());
 
     const checkUnsyncedChanges = useCallback(() => {
-        const creates = getQueue(SYNC_QUEUES.CREATES).length;
-        const updates = getQueue(SYNC_QUEUES.UPDATES).length;
-        const deletes = getQueue(SYNC_QUEUES.DELETES).length;
-        setUnsyncedCount(creates + updates + deletes);
+        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
+        setUnsyncedCount(creates.length + updates.length + deletes.length);
+        setUnsyncedIds(new Set([...creates.map(t => t.id), ...updates.map(t => t.id)]));
     }, []);
 
     const setQueue = useCallback(<T,>(key: string, queue: T[]) => {
@@ -152,28 +159,84 @@ const App: React.FC = () => {
         if (!isOnline || isSyncing || !isSupabaseConfigured) return;
         
         setIsSyncing(true);
+        setConflictedIds(new Set()); // Clear previous conflicts
         addNotification('Syncing offline changes...', 'info');
 
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
         const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
         const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
         
+        let hadErrors = false;
+        const conflictedUpdates: Transaction[] = [];
+
         try {
+            // 1. Process Deletes
             if (deletes.length > 0) {
                 const { error } = await supabase!.from('transactions').delete().in('id', deletes);
-                if (error) throw new Error(`Sync deletes failed: ${error.message}`);
+                if (error) {
+                    hadErrors = true;
+                    throw new Error(`Sync deletes failed: ${error.message}`);
+                }
             }
+            
+            // 2. Process Creates
             if (creates.length > 0) {
                 const { error } = await supabase!.from('transactions').insert(creates.map(toSupabase));
-                 if (error) throw new Error(`Sync creates failed: ${error.message}`);
+                 if (error) {
+                    hadErrors = true;
+                    throw new Error(`Sync creates failed: ${error.message}`);
+                }
             }
+
+            // 3. Process Updates with conflict detection
             if (updates.length > 0) {
-                const { error } = await supabase!.from('transactions').upsert(updates.map(toSupabase));
-                if (error) throw new Error(`Sync updates failed: ${error.message}`);
+                const updatesToPush: Transaction[] = [];
+                
+                for (const localUpdate of updates) {
+                     const { data: serverTx, error: fetchError } = await supabase!
+                        .from('transactions')
+                        .select('id, updated_at')
+                        .eq('id', localUpdate.id)
+                        .single();
+
+                    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = row not found
+                        throw new Error(`Conflict check failed for ${localUpdate.id}: ${fetchError.message}`);
+                    }
+                    
+                    const serverUpdatedAt = serverTx ? new Date(serverTx.updated_at).getTime() : 0;
+                    const localBaseUpdatedAt = localUpdate.updatedAt ? new Date(localUpdate.updatedAt).getTime() : 0;
+
+                    if (!serverTx || serverUpdatedAt > localBaseUpdatedAt) {
+                        // CONFLICT! The server version is newer or was deleted. Discard local change.
+                        conflictedUpdates.push(localUpdate);
+                    } else {
+                        // No conflict, add to batch update
+                        updatesToPush.push(localUpdate);
+                    }
+                }
+
+                if (updatesToPush.length > 0) {
+                    // Use upsert for the non-conflicted batch
+                    const { error } = await supabase!.from('transactions').upsert(updatesToPush.map(toSupabase));
+                    if (error) {
+                        hadErrors = true;
+                        throw new Error(`Sync updates failed: ${error.message}`);
+                    }
+                }
+
+                if (conflictedUpdates.length > 0) {
+                    setConflictedIds(new Set(conflictedUpdates.map(t => t.id)));
+                    addNotification(`${conflictedUpdates.length} updates had conflicts and were discarded. The latest data is now shown.`, 'error');
+                }
             }
-            clearQueues();
-            console.log("Sync successful!");
-            addNotification('Sync successful!', 'success');
+
+            if (!hadErrors) {
+                clearQueues();
+                console.log("Sync successful!");
+                if (conflictedUpdates.length === 0) {
+                    addNotification('Sync successful!', 'success');
+                }
+            }
         } catch (error: any) {
             console.error("Sync error:", error.message || error);
             addNotification(`Sync failed. Some changes could not be saved. Error: ${error.message}`, 'error');
@@ -189,6 +252,41 @@ const App: React.FC = () => {
             handleSync();
         }
     }, [isOnline, unsyncedCount, isSyncing, handleSync]);
+    
+    const resetEditModeTimer = useCallback(() => {
+        if (editModeTimeoutRef.current) {
+            clearTimeout(editModeTimeoutRef.current);
+        }
+        editModeTimeoutRef.current = window.setTimeout(() => {
+            setIsEditMode(false);
+        }, 120000); // 2 minutes
+    }, []);
+
+    useEffect(() => {
+        if (isEditMode) {
+            resetEditModeTimer();
+            window.addEventListener('mousemove', resetEditModeTimer);
+            window.addEventListener('keydown', resetEditModeTimer);
+        } else {
+            if (editModeTimeoutRef.current) {
+                clearTimeout(editModeTimeoutRef.current);
+            }
+            window.removeEventListener('mousemove', resetEditModeTimer);
+            window.removeEventListener('keydown', resetEditModeTimer);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', resetEditModeTimer);
+            window.removeEventListener('keydown', resetEditModeTimer);
+            if (editModeTimeoutRef.current) {
+                clearTimeout(editModeTimeoutRef.current);
+            }
+        };
+    }, [isEditMode, resetEditModeTimer]);
+
+    const toggleEditMode = () => {
+        setIsEditMode(prev => !prev);
+    };
 
     const dateFilteredTransactions = useMemo(() => {
         const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -234,7 +332,7 @@ const App: React.FC = () => {
     }, [dateFilteredTransactions, searchQuery]);
 
 
-    const handleAddTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'date'>) => {
+    const handleAddTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'date' | 'updatedAt'>) => {
         const newTransaction: Transaction = {
             ...transaction,
             id: crypto.randomUUID(),
@@ -372,17 +470,6 @@ const App: React.FC = () => {
         setEditingTransaction(transaction);
         openModal();
     };
-    
-    const handleSaveFromCalculator = (data: { quantity: number; rate: number; total: number; }) => {
-        setPrefilledData({
-            quantity: data.quantity,
-            rate: data.rate,
-            total: data.total,
-            item: 'Flour Sale',
-        });
-        setCurrentPage('transactions');
-        openModal();
-    };
 
     return (
         <div className="flex min-h-screen bg-amber-50">
@@ -391,6 +478,8 @@ const App: React.FC = () => {
                 setIsOpen={setIsSidebarOpen}
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}
+                isEditMode={isEditMode}
+                onToggleEditMode={toggleEditMode}
             />
             <div className="flex-1 lg:pl-64">
                 <Header 
@@ -404,7 +493,7 @@ const App: React.FC = () => {
                 <main className="container mx-auto p-4 md:p-6 lg:p-8">
                      {isLoading ? (
                         <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-amber-500"></div>
+                            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
                         </div>
                     ) : (
                         <>
@@ -418,6 +507,9 @@ const App: React.FC = () => {
                                     setTimeFilter={setTimeFilter}
                                     searchQuery={searchQuery}
                                     setSearchQuery={setSearchQuery}
+                                    unsyncedIds={unsyncedIds}
+                                    conflictedIds={conflictedIds}
+                                    isEditMode={isEditMode}
                                 />
                             )}
                             {currentPage === 'dashboard' && (
@@ -428,17 +520,7 @@ const App: React.FC = () => {
                                 />
                             )}
                             {currentPage === 'calculator' && (
-                                <CalculatorPage onSave={handleSaveFromCalculator} />
-                            )}
-                            {currentPage === 'insights' && (
-                                <InsightsPage 
-                                    transactions={dateFilteredTransactions}
-                                    timeFilter={timeFilter}
-                                    setTimeFilter={setTimeFilter}
-                                />
-                            )}
-                            {currentPage === 'settings' && (
-                                <SettingsPage />
+                                <CalculatorPage isEditMode={isEditMode} />
                             )}
                         </>
                     )}

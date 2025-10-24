@@ -11,6 +11,20 @@ interface SalesChartProps {
 
 type ChartView = 'sales' | 'quantity';
 
+const hexToRgba = (hex: string, alpha: number): string => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+        r = parseInt(hex[1] + hex[2], 16);
+        g = parseInt(hex[3] + hex[4], 16);
+        b = parseInt(hex[5] + hex[6], 16);
+    }
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstance = useRef<any>(null);
@@ -71,7 +85,10 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
             }
             return;
         }
-
+        
+        const computedStyle = getComputedStyle(document.documentElement);
+        const primaryColor600 = `rgb(${computedStyle.getPropertyValue('--color-primary-600').trim()})`;
+        
         const { labels, primaryData, fullDataForTooltip } = chartData;
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
@@ -81,8 +98,8 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
         }
         
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(217, 119, 6, 0.6)'); // amber-600
-        gradient.addColorStop(1, 'rgba(217, 119, 6, 0)');
+        gradient.addColorStop(0, hexToRgba(primaryColor600, 0.6));
+        gradient.addColorStop(1, hexToRgba(primaryColor600, 0));
 
         chartInstance.current = new Chart(ctx, {
             type: 'line',
@@ -92,9 +109,9 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                     label: `Cumulative ${chartView === 'sales' ? 'Sales' : 'Quantity'}`,
                     data: primaryData,
                     backgroundColor: gradient,
-                    borderColor: '#d97706', // amber-600
+                    borderColor: primaryColor600,
                     borderWidth: 2,
-                    pointBackgroundColor: '#d97706',
+                    pointBackgroundColor: primaryColor600,
                     pointBorderColor: '#fff',
                     pointHoverRadius: 6,
                     pointRadius: 4,
@@ -188,7 +205,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
             onClick={onClick}
             className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
                 isActive 
-                ? 'bg-amber-500 text-white shadow-sm' 
+                ? 'bg-primary-500 text-white shadow-sm' 
                 : 'text-slate-600 hover:bg-slate-200'
             }`}
         >
@@ -197,7 +214,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
     )
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-amber-200/50">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-primary-200/50">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                  <h3 className="text-lg font-bold text-slate-800">Cumulative Growth</h3>
                 <div className="flex items-center space-x-1 p-1 bg-slate-100 rounded-lg">

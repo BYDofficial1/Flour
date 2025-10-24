@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import type { Transaction } from '../types';
 import { ChartIcon } from './icons/ChartIcon';
@@ -12,8 +13,8 @@ interface DashboardProps {
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 ease-in-out flex items-center space-x-4 border border-amber-200/50">
-        <div className="bg-amber-100 p-3 rounded-full">
+    <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 ease-in-out flex items-center space-x-4 border border-primary-200/50">
+        <div className="bg-primary-100 p-3 rounded-full">
             {icon}
         </div>
         <div>

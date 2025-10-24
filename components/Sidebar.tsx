@@ -4,16 +4,16 @@ import { ListBulletIcon } from './icons/ListBulletIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
-import { SparklesIcon } from './icons/SparklesIcon';
-import { CogIcon } from './icons/CogIcon';
 
-type Page = 'transactions' | 'dashboard' | 'calculator' | 'insights' | 'settings';
+type Page = 'transactions' | 'dashboard' | 'calculator';
 
 interface SidebarProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     currentPage: Page;
     setCurrentPage: (page: Page) => void;
+    isEditMode: boolean;
+    onToggleEditMode: () => void;
 }
 
 const NavItem: React.FC<{
@@ -27,8 +27,8 @@ const NavItem: React.FC<{
             onClick={onClick}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left ${
                 isActive
-                    ? 'bg-amber-500 text-white font-bold shadow-lg'
-                    : 'text-slate-300 hover:bg-amber-500/20 hover:text-white'
+                    ? 'bg-primary-500 text-white font-bold shadow-lg'
+                    : 'text-slate-300 hover:bg-primary-500/20 hover:text-white'
             }`}
             aria-current={isActive ? 'page' : undefined}
         >
@@ -38,7 +38,7 @@ const NavItem: React.FC<{
     </li>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage, isEditMode, onToggleEditMode }) => {
 
     const handleNavigation = (page: Page) => {
         setCurrentPage(page);
@@ -64,8 +64,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                 <div className="flex-shrink-0">
                     <div className="flex justify-between items-center mb-8">
                          <div className="flex items-center gap-2">
-                            <WheatIcon/>
-                            <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300">
+                            <button 
+                                onClick={onToggleEditMode} 
+                                className="cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-800 focus-visible:ring-white rounded-full p-1" 
+                                title="Toggle Edit Mode"
+                                aria-label="Toggle Edit Mode"
+                            >
+                                <WheatIcon isEditMode={isEditMode}/>
+                            </button>
+                            <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-yellow-300">
                                Atta Chakki Hisab
                             </span>
                         </div>
@@ -93,21 +100,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                                 icon={<CalculatorIcon />}
                                 isActive={currentPage === 'calculator'}
                                 onClick={() => handleNavigation('calculator')}
-                            />
-                            <li className="pt-4 pb-2 px-4">
-                               <span className="text-xs font-semibold text-slate-500 uppercase">Tools & More</span>
-                            </li>
-                             <NavItem
-                                label="AI Insights"
-                                icon={<SparklesIcon />}
-                                isActive={currentPage === 'insights'}
-                                onClick={() => handleNavigation('insights')}
-                            />
-                             <NavItem
-                                label="Settings"
-                                icon={<CogIcon />}
-                                isActive={currentPage === 'settings'}
-                                onClick={() => handleNavigation('settings')}
                             />
                         </ul>
                     </nav>
