@@ -79,7 +79,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
         }
         
         const computedStyle = getComputedStyle(document.documentElement);
-        const primaryColor600 = `rgb(${computedStyle.getPropertyValue('--color-primary-600').trim()})`;
+        const primaryColor500 = `rgb(${computedStyle.getPropertyValue('--color-primary-500').trim()})`;
         
         const { data } = chartData;
         const ctx = chartRef.current.getContext('2d');
@@ -90,8 +90,8 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
         }
         
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, hexToRgba(primaryColor600, 0.6));
-        gradient.addColorStop(1, hexToRgba(primaryColor600, 0));
+        gradient.addColorStop(0, hexToRgba(primaryColor500, 0.4));
+        gradient.addColorStop(1, hexToRgba(primaryColor500, 0));
 
         chartInstance.current = new Chart(ctx, {
             type: 'line',
@@ -100,10 +100,10 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                     label: `Cumulative ${chartView === 'sales' ? 'Sales' : 'Quantity'}`,
                     data: data,
                     backgroundColor: gradient,
-                    borderColor: primaryColor600,
+                    borderColor: primaryColor500,
                     borderWidth: 2,
-                    pointBackgroundColor: primaryColor600,
-                    pointBorderColor: '#fff',
+                    pointBackgroundColor: primaryColor500,
+                    pointBorderColor: '#1e293b', // slate-800
                     pointHoverRadius: 6,
                     pointRadius: 4,
                     fill: true,
@@ -116,8 +116,8 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#f3f4f6' },
-                        ticks: { color: '#64748b' }
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                        ticks: { color: '#94a3b8' }
                     },
                     x: {
                          type: 'time',
@@ -130,7 +130,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                             },
                          },
                          grid: { display: false },
-                         ticks: { color: '#64748b' }
+                         ticks: { color: '#94a3b8' }
                     }
                 },
                 plugins: {
@@ -139,7 +139,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                         position: 'top',
                         align: 'end',
                         labels: {
-                            color: '#475569',
+                            color: '#cbd5e1',
                             padding: 10,
                             font: {
                                 size: 13,
@@ -151,7 +151,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                         }
                     },
                     tooltip: {
-                        backgroundColor: '#1e293b',
+                        backgroundColor: '#0f172a',
                         titleFont: { size: 14, weight: 'bold' },
                         bodyFont: { size: 12 },
                         padding: 12,
@@ -200,8 +200,8 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
             onClick={onClick}
             className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
                 isActive 
-                ? 'bg-white shadow-md text-primary-600' 
-                : 'text-slate-600 hover:bg-slate-200/50'
+                ? 'bg-slate-600 shadow-md text-slate-100' 
+                : 'text-slate-300 hover:bg-slate-600/50'
             }`}
         >
             {children}
@@ -209,10 +209,10 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
     )
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200/80">
+        <div className="bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-2xl shadow-black/20 border border-slate-700">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                 <h3 className="text-lg font-bold text-slate-800">Cumulative Growth</h3>
-                <div className="flex items-center space-x-1 p-1 bg-slate-100 rounded-lg">
+                 <h3 className="text-lg font-bold text-slate-100">Cumulative Growth</h3>
+                <div className="flex items-center space-x-1 p-1 bg-slate-700 rounded-lg">
                     <ToggleButton isActive={chartView === 'sales'} onClick={() => setChartView('sales')}>Sales (Rs)</ToggleButton>
                     <ToggleButton isActive={chartView === 'quantity'} onClick={() => setChartView('quantity')}>Quantity (kg)</ToggleButton>
                 </div>
@@ -223,8 +223,8 @@ const SalesChart: React.FC<SalesChartProps> = ({ transactions }) => {
                 ) : (
                     <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
                         <ChartPieIcon />
-                        <h4 className="text-lg font-semibold text-slate-700 mt-3">No Chart Data Yet!</h4>
-                        <p className="text-slate-500 mt-1 text-sm max-w-xs">
+                        <h4 className="text-lg font-semibold text-slate-200 mt-3">No Chart Data Yet!</h4>
+                        <p className="text-slate-400 mt-1 text-sm max-w-xs">
                             Add some transactions in this period to see your sales trends appear here.
                         </p>
                     </div>

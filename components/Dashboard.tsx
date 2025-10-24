@@ -14,13 +14,13 @@ interface DashboardProps {
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode; iconBgClass?: string; }> = ({ title, value, icon, iconBgClass }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-in-out flex items-center space-x-4 border border-slate-200/80">
-        <div className={`p-4 rounded-lg ${iconBgClass || 'bg-primary-100'}`}>
+    <div className="bg-slate-800 p-6 rounded-2xl shadow-2xl shadow-black/20 hover:-translate-y-1 transition-all duration-300 ease-in-out flex items-center space-x-4 border border-slate-700">
+        <div className={`p-4 rounded-lg ${iconBgClass || 'bg-primary-500/10'}`}>
             {icon}
         </div>
         <div>
-            <p className="text-sm text-slate-500 font-medium">{title}</p>
-            <div className="text-3xl font-bold text-slate-800">{value}</div>
+            <p className="text-sm text-slate-400 font-medium">{title}</p>
+            <div className="text-3xl font-bold text-slate-100">{value}</div>
         </div>
     </div>
 );
@@ -73,26 +73,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
             <DashboardCard 
                 title="Total Sales"
                 value={formatCurrency(stats.totalSales)}
-                icon={<RupeeIcon className="text-green-600 h-7 w-7" />}
-                iconBgClass="bg-green-100"
+                icon={<RupeeIcon className="text-green-400 h-7 w-7" />}
+                iconBgClass="bg-green-500/10"
             />
             <DashboardCard 
                 title="Total Quantity"
                 value={`${stats.totalQuantity.toLocaleString()} kg`}
-                icon={<WeightIcon className="text-blue-600 h-7 w-7" />}
-                iconBgClass="bg-blue-100"
+                icon={<WeightIcon className="text-blue-400 h-7 w-7" />}
+                iconBgClass="bg-blue-500/10"
             />
              <DashboardCard 
                 title="Total Due"
                 value={formatCurrency(stats.totalDue)}
-                icon={<ExclamationCircleIcon className="text-red-600 h-7 w-7" />}
-                iconBgClass="bg-red-100"
+                icon={<ExclamationCircleIcon className="text-red-400 h-7 w-7" />}
+                iconBgClass="bg-red-500/10"
             />
             <DashboardCard 
                 title="Total Transactions"
                 value={stats.totalTransactions.toString()}
-                icon={<ChartIcon className="text-indigo-600 h-7 w-7" />}
-                iconBgClass="bg-indigo-100"
+                icon={<ChartIcon className="text-indigo-400 h-7 w-7" />}
+                iconBgClass="bg-indigo-500/10"
             />
         </div>
     );

@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Calculation } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -13,14 +15,14 @@ import { CloseIcon } from '../components/icons/CloseIcon';
 
 type CalculatorType = 'maund' | 'rate';
 const CALC_CACHE_KEY = 'saved_calculations';
-const formInputClasses = "mt-1 block w-full px-4 py-3 bg-white border border-slate-300 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-900 placeholder-slate-600";
+const formInputClasses = "mt-1 block w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-100 placeholder-slate-400";
 const smallFormInputClasses = formInputClasses.replace('text-lg', 'text-base').replace('py-3', 'py-2');
 const smallTextAreaClasses = smallFormInputClasses + " leading-relaxed";
 
 
 const InputField = ({ id, label, value, onChange, placeholder, error, type = 'number' }: { id: string, label: string, value: string, onChange: (val: string) => void, placeholder: string, error?: string, type?: string }) => (
     <div>
-        <label htmlFor={id} className="block text-sm font-medium text-slate-700">{label}</label>
+        <label htmlFor={id} className="block text-sm font-medium text-slate-300">{label}</label>
         <input
             type={type}
             id={id}
@@ -43,11 +45,11 @@ const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: stri
     };
 
     return (
-        <div className="mt-6 p-4 bg-primary-50 border-t-2 border-primary-200 rounded-b-xl">
-            <h4 className="font-semibold text-slate-700 mb-4">Save Calculation</h4>
+        <div className="mt-6 p-4 bg-slate-700 border-t-2 border-slate-600 rounded-b-xl">
+            <h4 className="font-semibold text-slate-200 mb-4">Save Calculation</h4>
             <div className="space-y-4">
                  <div>
-                    <label htmlFor="saveCustomerName" className="block text-sm font-medium text-slate-700">Customer Name (Optional)</label>
+                    <label htmlFor="saveCustomerName" className="block text-sm font-medium text-slate-300">Customer Name (Optional)</label>
                     <input
                         type="text"
                         id="saveCustomerName"
@@ -58,7 +60,7 @@ const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: stri
                     />
                 </div>
                  <div>
-                    <label htmlFor="saveNotes" className="block text-sm font-medium text-slate-700">Notes (Optional)</label>
+                    <label htmlFor="saveNotes" className="block text-sm font-medium text-slate-300">Notes (Optional)</label>
                     <textarea 
                         id="saveNotes" 
                         value={notes} 
@@ -78,7 +80,7 @@ const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: stri
                 </button>
                 <button
                     onClick={onCancel}
-                    className="w-full px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-lg hover:bg-slate-300 transition-colors"
+                    className="w-full px-4 py-2 bg-slate-500 text-slate-100 font-semibold rounded-lg hover:bg-slate-600 transition-colors"
                 >
                     Cancel
                 </button>
@@ -127,7 +129,7 @@ const RateCalculator: React.FC = () => {
     }, []);
     
      return (
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full border border-primary-200/50">
+        <div className="bg-slate-800 p-6 md:p-8 rounded-xl shadow-2xl shadow-black/20 w-full border border-slate-700">
             <div className="space-y-6">
                 <InputField
                     id="weight"
@@ -147,18 +149,18 @@ const RateCalculator: React.FC = () => {
                     error={errors.amount}
                 />
                 
-                <div className="bg-primary-50 p-6 rounded-lg text-center border border-primary-200 transition-all duration-300">
-                    <p className="text-base font-medium text-slate-600">Calculated Rate</p>
-                    <p className="text-4xl font-bold text-primary-600 mt-1">
+                <div className="bg-slate-900/70 p-6 rounded-lg text-center border border-slate-700 transition-all duration-300">
+                    <p className="text-base font-medium text-slate-300">Calculated Rate</p>
+                    <p className="text-4xl font-bold text-primary-400 mt-1">
                        {formatCurrency(calculation.rate)}
-                       <span className="text-xl font-semibold text-slate-500"> / kg</span>
+                       <span className="text-xl font-semibold text-slate-400"> / kg</span>
                     </p>
                 </div>
             </div>
-             <div className="mt-8 pt-6 border-t border-slate-200">
+             <div className="mt-8 pt-6 border-t border-slate-700">
                 <button
                     onClick={handleReset}
-                    className="w-full px-4 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                    className="w-full px-4 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors"
                 >
                     Reset
                 </button>
@@ -259,7 +261,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
     };
 
     return (
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full border border-primary-200/50">
+        <div className="bg-slate-800 p-6 md:p-8 rounded-xl shadow-2xl shadow-black/20 w-full border border-slate-700">
             <div className="space-y-6">
                 <InputField
                     id="pricePerMaund"
@@ -269,7 +271,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                     placeholder="e.g., 2200"
                 />
                  <div>
-                    <label htmlFor="bagWeight" className="block text-sm font-medium text-slate-700">Add Bag Weight</label>
+                    <label htmlFor="bagWeight" className="block text-sm font-medium text-slate-300">Add Bag Weight</label>
                     <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                             type="number"
@@ -285,7 +287,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                         />
                          <button
                             onClick={handleAddBag}
-                            className="sm:col-span-1 flex-shrink-0 px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+                            className="sm:col-span-1 flex-shrink-0 px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors"
                         >
                             Add Bag
                         </button>
@@ -295,12 +297,12 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
 
                 {bags.length > 0 && (
                     <div>
-                        <h4 className="text-sm font-medium text-slate-700 mb-2">Added Bags ({bags.length}):</h4>
-                        <div className="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-md border max-h-32 overflow-y-auto">
+                        <h4 className="text-sm font-medium text-slate-300 mb-2">Added Bags ({bags.length}):</h4>
+                        <div className="flex flex-wrap gap-2 p-3 bg-slate-700/50 rounded-md border border-slate-600 max-h-32 overflow-y-auto no-scrollbar">
                             {bags.map((bag, index) => (
-                                <span key={index} className="flex items-center gap-1.5 bg-primary-200 text-primary-800 text-sm font-semibold pl-2.5 pr-1 py-1 rounded-full">
+                                <span key={index} className="flex items-center gap-1.5 bg-primary-500/20 text-primary-300 text-sm font-semibold pl-2.5 pr-1 py-1 rounded-full">
                                     {bag.weight.toFixed(2)} kg
-                                    <button onClick={() => handleRemoveBag(index)} className="text-primary-800/80 hover:text-primary-800 rounded-full hover:bg-black/10 p-0.5 focus:outline-none">
+                                    <button onClick={() => handleRemoveBag(index)} className="text-primary-300/80 hover:text-primary-200 rounded-full hover:bg-black/20 p-0.5 focus:outline-none">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </span>
@@ -309,31 +311,31 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                     </div>
                 )}
                 
-                <div className="bg-primary-50 p-6 rounded-lg border border-primary-200 space-y-4 text-center">
+                <div className="bg-slate-900/70 p-6 rounded-lg border border-slate-700 space-y-4 text-center">
                     <div>
-                         <p className="text-base font-medium text-slate-600">Total Weight (Maans)</p>
-                         <p className="text-4xl font-bold text-primary-600 mt-1">
-                            {calculation.maans}<span className="text-xl font-semibold text-slate-500"> Maan</span>
-                             <span className="text-2xl font-bold text-primary-600/90 ml-2">
-                                 {calculation.kilos.toFixed(2)}<span className="text-lg font-semibold text-slate-500"> kg</span>
+                         <p className="text-base font-medium text-slate-300">Total Weight (Maans)</p>
+                         <p className="text-4xl font-bold text-primary-400 mt-1">
+                            {calculation.maans}<span className="text-xl font-semibold text-slate-400"> Maan</span>
+                             <span className="text-2xl font-bold text-primary-400/90 ml-2">
+                                 {calculation.kilos.toFixed(2)}<span className="text-lg font-semibold text-slate-400"> kg</span>
                              </span>
                          </p>
                     </div>
-                     <div className="border-t border-primary-200/80 pt-4">
-                         <p className="text-base font-medium text-slate-600">Total (in KG)</p>
-                         <p className="text-3xl font-bold text-primary-600 mt-1">
+                     <div className="border-t border-slate-700 pt-4">
+                         <p className="text-base font-medium text-slate-300">Total (in KG)</p>
+                         <p className="text-3xl font-bold text-primary-400 mt-1">
                             {calculation.totalKg.toFixed(2)}
-                           <span className="text-xl font-semibold text-slate-500"> kg</span>
+                           <span className="text-xl font-semibold text-slate-400"> kg</span>
                         </p>
                     </div>
                     {calculation.totalPrice > 0 && (
-                        <div className="border-t border-primary-200/80 pt-4">
-                            <p className="text-base font-medium text-slate-600">Total Price</p>
-                            <p className="text-3xl font-bold text-primary-600 mt-1">
+                        <div className="border-t border-slate-700 pt-4">
+                            <p className="text-base font-medium text-slate-300">Total Price</p>
+                            <p className="text-3xl font-bold text-primary-400 mt-1">
                                 {formatCurrency(calculation.totalPrice)}
                             </p>
                             {(parseFloat(pricePerMaund) > 0 || calculation.ratePerKg > 0) && (
-                                <div className="text-sm text-slate-500 font-medium mt-2 space-y-1 text-center">
+                                <div className="text-sm text-slate-400 font-medium mt-2 space-y-1 text-center">
                                     {parseFloat(pricePerMaund) > 0 && (
                                         <p>
                                             <span className="font-semibold">{formatCurrency(parseFloat(pricePerMaund))}</span> / Maan
@@ -350,10 +352,10 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                     )}
                 </div>
             </div>
-             <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row gap-4">
+             <div className="mt-8 pt-6 border-t border-slate-700 flex flex-col sm:flex-row gap-4">
                 <button
                     onClick={handleReset}
-                    className="w-full px-4 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                    className="w-full px-4 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors"
                 >
                     Reset
                 </button>
@@ -361,7 +363,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                     onClick={() => setIsSaving(true)}
                     disabled={!calculation.isValid || isSaving || !isEditMode}
                     title={!isEditMode ? "Enable Edit Mode to save" : "Save Calculation"}
-                    className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:bg-primary-400/50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:bg-primary-400/50 disabled:cursor-not-allowed transition-colors"
                 >
                     Save Calculation
                 </button>
@@ -438,23 +440,23 @@ const EditCalculationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-amber-50 rounded-lg shadow-xl w-full max-w-md">
-                <div className="flex justify-between items-center p-4 border-b border-primary-200/80">
-                    <h2 className="text-xl font-bold text-slate-800">Edit Calculation</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><CloseIcon /></button>
+            <div className="bg-slate-800 rounded-lg shadow-xl w-full max-w-md">
+                <div className="flex justify-between items-center p-4 border-b border-slate-700">
+                    <h2 className="text-xl font-bold text-slate-100">Edit Calculation</h2>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-200"><CloseIcon /></button>
                 </div>
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
                     <div>
-                        <label htmlFor="editCustomerName" className="block text-sm font-medium text-slate-700">Customer Name</label>
+                        <label htmlFor="editCustomerName" className="block text-sm font-medium text-slate-300">Customer Name</label>
                         <input type="text" id="editCustomerName" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Enter customer name" className={smallFormInputClasses} />
                     </div>
                      <div>
-                        <label htmlFor="editPricePerMaund" className="block text-sm font-medium text-slate-700">Price per Maan (40 kg)</label>
+                        <label htmlFor="editPricePerMaund" className="block text-sm font-medium text-slate-300">Price per Maan (40 kg)</label>
                         <input type="number" id="editPricePerMaund" value={pricePerMaund} onChange={e => setPricePerMaund(e.target.value)} placeholder="e.g., 2200" className={smallFormInputClasses} />
                     </div>
                     
                     <div>
-                        <label htmlFor="editBagWeight" className="block text-sm font-medium text-slate-700">Add Bag Weight</label>
+                        <label htmlFor="editBagWeight" className="block text-sm font-medium text-slate-300">Add Bag Weight</label>
                         <div className="mt-1 flex gap-2">
                             <input type="number" id="editBagWeight" value={currentWeight} onChange={(e) => { setCurrentWeight(e.target.value); if (error) setError(null); }} placeholder="Weight (kg)" className={smallFormInputClasses} />
                             <button onClick={handleAddBag} className="px-4 py-2 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600">Add</button>
@@ -464,35 +466,35 @@ const EditCalculationModal: React.FC<{
 
                     {bags.length > 0 && (
                         <div>
-                            <h4 className="text-sm font-medium text-slate-700 mb-2">Added Bags ({bags.length}):</h4>
-                            <div className="flex flex-wrap gap-2 p-3 bg-slate-100 rounded-md border max-h-32 overflow-y-auto">
+                            <h4 className="text-sm font-medium text-slate-300 mb-2">Added Bags ({bags.length}):</h4>
+                            <div className="flex flex-wrap gap-2 p-3 bg-slate-700 rounded-md border border-slate-600 max-h-32 overflow-y-auto no-scrollbar">
                                 {bags.map((bag, index) => (
-                                    <span key={index} className="flex items-center gap-1.5 bg-primary-200 text-primary-800 text-sm font-semibold pl-2.5 pr-1 py-1 rounded-full">
+                                    <span key={index} className="flex items-center gap-1.5 bg-primary-500/20 text-primary-300 text-sm font-semibold pl-2.5 pr-1 py-1 rounded-full">
                                         {bag.weight.toFixed(2)} kg
-                                        <button onClick={() => handleRemoveBag(index)} className="text-primary-800/80 hover:text-primary-800 rounded-full hover:bg-black/10 p-0.5"><CloseIcon /></button>
+                                        <button onClick={() => handleRemoveBag(index)} className="text-primary-300/80 hover:text-primary-200 rounded-full hover:bg-black/20 p-0.5"><CloseIcon /></button>
                                     </span>
                                 ))}
                             </div>
                         </div>
                     )}
                     
-                    <div className="bg-white p-4 rounded-lg border border-primary-200 space-y-3 text-center">
+                    <div className="bg-slate-900/70 p-4 rounded-lg border border-slate-700 space-y-3 text-center">
                         <div>
-                            <p className="text-sm font-medium text-slate-600">Total Weight</p>
-                            <p className="text-2xl font-bold text-primary-600">
-                                {liveCalculation.maans} <span className="text-base font-semibold text-slate-500">Maan</span>, {liveCalculation.kilos.toFixed(2)} <span className="text-base font-semibold text-slate-500">kg</span>
+                            <p className="text-sm font-medium text-slate-300">Total Weight</p>
+                            <p className="text-2xl font-bold text-primary-400">
+                                {liveCalculation.maans} <span className="text-base font-semibold text-slate-400">Maan</span>, {liveCalculation.kilos.toFixed(2)} <span className="text-base font-semibold text-slate-400">kg</span>
                             </p>
                         </div>
-                        <div className="border-t border-primary-100 pt-3">
-                            <p className="text-sm font-medium text-slate-600">New Total Price</p>
-                            <p className="text-3xl font-bold text-primary-600">{formatCurrency(liveCalculation.totalPrice)}</p>
+                        <div className="border-t border-slate-700 pt-3">
+                            <p className="text-sm font-medium text-slate-300">New Total Price</p>
+                            <p className="text-3xl font-bold text-primary-400">{formatCurrency(liveCalculation.totalPrice)}</p>
                              {(parseFloat(pricePerMaund) > 0 || liveCalculation.ratePerKg > 0) && (
-                                <div className="text-xs text-slate-500 font-medium mt-1">
+                                <div className="text-xs text-slate-400 font-medium mt-1">
                                     {parseFloat(pricePerMaund) > 0 && (
                                         <span>{formatCurrency(parseFloat(pricePerMaund))} / Maan</span>
                                     )}
                                     {liveCalculation.ratePerKg > 0 && (
-                                         <span className="ml-2 pl-2 border-l border-slate-300">{formatCurrency(liveCalculation.ratePerKg)} / kg</span>
+                                         <span className="ml-2 pl-2 border-l border-slate-600">{formatCurrency(liveCalculation.ratePerKg)} / kg</span>
                                     )}
                                 </div>
                             )}
@@ -500,12 +502,12 @@ const EditCalculationModal: React.FC<{
                     </div>
 
                     <div>
-                        <label htmlFor="editNotes" className="block text-sm font-medium text-slate-700">Notes</label>
+                        <label htmlFor="editNotes" className="block text-sm font-medium text-slate-300">Notes</label>
                         <textarea id="editNotes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={smallTextAreaClasses} placeholder="Add any details..." />
                     </div>
                 </div>
-                <div className="flex justify-end p-4 bg-slate-50 rounded-b-lg gap-2">
-                    <button onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Cancel</button>
+                <div className="flex justify-end p-4 bg-slate-900/50 rounded-b-lg gap-2">
+                    <button onClick={onClose} className="px-4 py-2 bg-slate-600 text-slate-100 rounded-md hover:bg-slate-500">Cancel</button>
                     <button onClick={handleSave} className="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600">Save Changes</button>
                 </div>
             </div>
@@ -516,35 +518,35 @@ const EditCalculationModal: React.FC<{
 const SavedCalculationsList: React.FC<{ calculations: Calculation[], onDelete: (id: string) => void, onEdit: (calc: Calculation) => void, isEditMode: boolean }> = ({ calculations, onDelete, onEdit, isEditMode }) => {
     if (calculations.length === 0) {
         return (
-            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-md border-2 border-dashed border-slate-200 h-full flex flex-col justify-center">
+            <div className="text-center py-16 px-6 bg-slate-800 rounded-lg shadow-md border-2 border-dashed border-slate-700 h-full flex flex-col justify-center">
                 <CalendarIcon />
-                <h3 className="text-xl font-semibold text-slate-700 mt-4">No Saved Calculations</h3>
-                <p className="text-slate-500 mt-2">Your saved calculations will appear here.</p>
+                <h3 className="text-xl font-semibold text-slate-200 mt-4">No Saved Calculations</h3>
+                <p className="text-slate-400 mt-2">Your saved calculations will appear here.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full border border-primary-200/50">
-            <h3 className="text-xl font-bold text-slate-700 mb-4">Saved Calculations</h3>
+        <div className="bg-slate-800 p-6 md:p-8 rounded-xl shadow-2xl shadow-black/20 w-full border border-slate-700">
+            <h3 className="text-xl font-bold text-slate-200 mb-4">Saved Calculations</h3>
             <ul className="space-y-4">
                 {calculations.map(calc => {
                     const ratePerKg = (calc.price_per_maund || 0) / 40;
                     return (
-                    <li key={calc.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200/80">
+                    <li key={calc.id} className="bg-slate-700/50 p-4 rounded-lg border border-slate-600/80">
                         <div className="flex justify-between items-start gap-3">
                             <div className="flex-1">
-                                <p className="font-bold text-slate-800">{calc.customer_name}</p>
-                                <p className="text-sm text-slate-500">
+                                <p className="font-bold text-slate-100">{calc.customer_name}</p>
+                                <p className="text-sm text-slate-400">
                                     {new Date(calc.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                                 </p>
                                 <div className="mt-2 text-sm text-left">
-                                     <p className="font-semibold text-slate-700">{calc.total_kg.toFixed(2)} kg</p>
-                                     <p className="font-bold text-primary-600 mt-1">{formatCurrency(calc.total_price)}</p>
+                                     <p className="font-semibold text-slate-200">{calc.total_kg.toFixed(2)} kg</p>
+                                     <p className="font-bold text-primary-400 mt-1">{formatCurrency(calc.total_price)}</p>
                                      {calc.price_per_maund && calc.price_per_maund > 0 && (
-                                         <p className="text-xs text-slate-500 mt-1">
+                                         <p className="text-xs text-slate-400 mt-1">
                                              {formatCurrency(ratePerKg)} / kg
-                                             <span className="mx-1 text-slate-300">|</span>
+                                             <span className="mx-1 text-slate-500">|</span>
                                              {formatCurrency(calc.price_per_maund)} / Maan
                                          </p>
                                      )}
@@ -552,19 +554,19 @@ const SavedCalculationsList: React.FC<{ calculations: Calculation[], onDelete: (
                             </div>
                             {isEditMode && (
                                 <div className="flex flex-col sm:flex-row items-center gap-1 flex-shrink-0">
-                                    <button onClick={() => onEdit(calc)} className="p-2 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" aria-label={`Edit calculation for ${calc.customer_name}`}>
+                                    <button onClick={() => onEdit(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors" aria-label={`Edit calculation for ${calc.customer_name}`}>
                                         <EditIcon />
                                     </button>
-                                    <button onClick={() => onDelete(calc.id)} className="p-2 text-red-600 rounded-full hover:bg-red-100 transition-colors" aria-label={`Delete calculation for ${calc.customer_name}`}>
+                                    <button onClick={() => onDelete(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors" aria-label={`Delete calculation for ${calc.customer_name}`}>
                                         <DeleteIcon />
                                     </button>
                                 </div>
                             )}
                         </div>
                         {calc.notes && (
-                             <div className="mt-3 pt-3 border-t border-slate-200">
-                                <p className="text-sm text-slate-600 italic">
-                                    <strong className="font-semibold not-italic text-slate-700">Note:</strong> {calc.notes}
+                             <div className="mt-3 pt-3 border-t border-slate-600">
+                                <p className="text-sm text-slate-300 italic">
+                                    <strong className="font-semibold not-italic text-slate-200">Note:</strong> {calc.notes}
                                 </p>
                             </div>
                         )}
@@ -696,17 +698,17 @@ const CalculatorPage: React.FC<{isEditMode: boolean}> = ({ isEditMode }) => {
 
     return (
         <div className="mt-4">
-            <h2 className="text-2xl font-bold text-slate-700 mb-6">Calculators</h2>
+            <h2 className="text-2xl font-bold text-slate-200 mb-6">Calculators</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
                 {/* Left Column: Calculators */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-slate-200/60 p-1 rounded-lg flex justify-center w-full">
+                    <div className="bg-slate-800 p-1 rounded-lg flex justify-center w-full">
                         {(['maund', 'rate'] as CalculatorType[]).map(type => (
                             <button
                                 key={type}
                                 onClick={() => setActiveCalculator(type)}
-                                className={`w-1/2 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${activeCalculator === type ? 'bg-primary-500 text-white shadow' : 'text-slate-600'}`}
+                                className={`w-1/2 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${activeCalculator === type ? 'bg-primary-500 text-white shadow' : 'text-slate-300'}`}
                             >
                                 {type === 'maund' ? 'Maan Calculator' : 'Rate Calculator'}
                             </button>

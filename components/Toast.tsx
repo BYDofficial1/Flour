@@ -12,27 +12,27 @@ interface ToastProps {
 }
 
 const ICONS = {
-    success: <CheckCircleIcon className="text-green-500" />,
-    error: <ExclamationCircleIcon className="text-red-500" />,
-    info: <InformationCircleIcon className="text-blue-500" />,
+    success: <CheckCircleIcon className="text-green-400" />,
+    error: <ExclamationCircleIcon className="text-red-400" />,
+    info: <InformationCircleIcon className="text-blue-400" />,
 };
 
 const BORDER_COLORS = {
-    success: 'border-green-400',
-    error: 'border-red-400',
-    info: 'border-blue-400',
+    success: 'border-green-600',
+    error: 'border-red-600',
+    info: 'border-blue-600',
 };
 
 const BG_COLORS = {
-    success: 'bg-green-50',
-    error: 'bg-red-50',
-    info: 'bg-blue-50',
+    success: 'bg-green-900/80',
+    error: 'bg-red-900/80',
+    info: 'bg-blue-900/80',
 };
 
 const TEXT_COLORS = {
-    success: 'text-green-800',
-    error: 'text-red-800',
-    info: 'text-blue-800',
+    success: 'text-green-200',
+    error: 'text-red-200',
+    info: 'text-blue-200',
 };
 
 
@@ -61,7 +61,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
 
     return (
         <div
-            className={`flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-lg border-l-4 transition-all duration-300 transform ${BG_COLORS[type]} ${BORDER_COLORS[type]} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+            className={`flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-lg border-l-4 backdrop-blur-sm transition-all duration-300 transform ${BG_COLORS[type]} ${BORDER_COLORS[type]} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
             role="alert"
         >
             <div className="flex-shrink-0">{ICONS[type]}</div>
@@ -70,7 +70,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
             </div>
             <button
                 onClick={onClose}
-                className={`ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg inline-flex h-8 w-8 ${TEXT_COLORS[type]} focus:ring-2 focus:ring-offset-2 ${BG_COLORS[type]} hover:bg-opacity-50 transition-colors`}
+                className={`ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg inline-flex h-8 w-8 ${TEXT_COLORS[type]} focus:ring-2 focus:ring-offset-2 ${BG_COLORS[type]} hover:bg-black/20 transition-colors`}
                 aria-label="Close"
             >
                 <span className="sr-only">Close</span>

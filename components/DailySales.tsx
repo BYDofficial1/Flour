@@ -26,23 +26,23 @@ const DailySales: React.FC<DailySalesProps> = ({ transactions }) => {
     }, [transactions]);
 
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg h-full border border-slate-200/80">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">
+        <div className="bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-2xl shadow-black/20 h-full border border-slate-700">
+            <h3 className="text-lg font-bold text-slate-100 mb-4">
                 Daily Sales Breakdown
             </h3>
             {dailyData.length > 0 ? (
                 <div>
-                    <ul className="space-y-2 max-h-[20rem] overflow-y-auto pr-2">
+                    <ul className="space-y-2 max-h-[20rem] overflow-y-auto pr-2 no-scrollbar">
                         {dailyData.map(({ date, total }) => (
-                            <li key={date} className="flex justify-between items-center bg-slate-50 p-4 rounded-lg hover:bg-slate-100 transition-colors">
-                                <span className="text-sm font-medium text-slate-600">
+                            <li key={date} className="flex justify-between items-center bg-slate-700/50 p-4 rounded-lg hover:bg-slate-700 transition-colors">
+                                <span className="text-sm font-medium text-slate-300">
                                     {new Date(date).toLocaleDateString('en-IN', {
                                         year: 'numeric',
                                         month: 'long',
                                         day: 'numeric',
                                     })}
                                 </span>
-                                <span className="text-base font-bold text-slate-800">
+                                <span className="text-base font-bold text-slate-100">
                                     {formatCurrency(total)}
                                 </span>
                             </li>
@@ -52,8 +52,8 @@ const DailySales: React.FC<DailySalesProps> = ({ transactions }) => {
             ) : (
                 <div className="flex flex-col justify-center items-center h-full pb-10 text-center">
                     <CalendarIcon />
-                    <h4 className="text-md font-semibold text-slate-700 mt-3">No Sales Data</h4>
-                    <p className="text-slate-500 mt-1 text-sm">Your daily breakdown will show up here.</p>
+                    <h4 className="text-md font-semibold text-slate-200 mt-3">No Sales Data</h4>
+                    <p className="text-slate-400 mt-1 text-sm">Your daily breakdown will show up here.</p>
                 </div>
             )}
         </div>

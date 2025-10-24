@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atta Chakki Hisab</title>
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#f59e0b">
+    <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -103,8 +103,8 @@
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #f8fafc inset !important; /* slate-50 */
-        -webkit-text-fill-color: #0f172a !important; /* slate-900 */
+        -webkit-box-shadow: 0 0 0 30px #334155 inset !important; /* slate-700 */
+        -webkit-text-fill-color: #f1f5f9 !important; /* slate-100 */
         transition: background-color 5000s ease-in-out 0s;
     }
 
@@ -163,9 +163,17 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
     }
+    /* Custom scrollbar override */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
 </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-900 text-slate-300">
     <div id="app-loader">
         <svg xmlns="http://www.w3.org/2000/svg" class="loader-wheat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 12c0-2.5-2.5-6-2.5-6s-2.5 3.5-2.5 6c0 2.2-1.8 4-4 4s-4-1.8-4-4c0-2.5-2.5-6-2.5-6S4 9.5 4 12c0 4.4 3.6 8 8 8s8-3.6 8-8z" />
@@ -237,6 +245,13 @@
               }
           }
           typeWriter();
+      });
+
+      // Prevent mouse wheel from changing number inputs
+      document.addEventListener("wheel", function(event){
+          if (document.activeElement.type === "number") {
+              document.activeElement.blur();
+          }
       });
     </script>
 </body>

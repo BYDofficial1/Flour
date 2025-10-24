@@ -16,15 +16,15 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyncedCount, onSync, isSupabaseConfigured }) => {
     return (
-        <header className="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-40 border-b border-slate-200/80">
+        <header className="bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-40 border-b border-slate-700/80">
             <div className="container mx-auto px-4 md:px-6 py-5 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <button onClick={onMenuClick} className="text-slate-600 hover:text-primary-600 lg:hidden" aria-label="Open menu">
+                    <button onClick={onMenuClick} className="text-slate-300 hover:text-primary-400 lg:hidden" aria-label="Open menu">
                         <MenuIcon />
                     </button>
                     <div className="flex items-center gap-3">
                          <WheatIcon />
-                        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-100">
                             Atta Chakki Hisab
                         </h1>
                     </div>
@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyn
                         <button
                             onClick={onSync}
                             disabled={isSyncing || unsyncedCount === 0}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-md transition-all text-white bg-primary-500 hover:bg-primary-600 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-md transition-all text-white bg-primary-500 hover:bg-primary-600 disabled:bg-slate-500 disabled:cursor-not-allowed"
                             aria-label={unsyncedCount > 0 ? `Sync ${unsyncedCount} offline changes` : 'Data is up to date'}
                         >
                              {unsyncedCount > 0 || isSyncing ? <SyncIcon className={isSyncing ? 'animate-spin' : ''} /> : <CheckCircleIcon className="h-5 w-5"/>}
@@ -45,8 +45,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyn
                     )}
                     
                     <div className="flex items-center gap-2" title={isOnline ? 'You are online' : 'You are offline. Changes will be synced later.'}>
-                        <WifiIcon className={isOnline ? 'text-green-500' : 'text-red-500'} />
-                        <span className={`text-sm font-medium hidden sm:block ${isOnline ? 'text-slate-600' : 'text-red-500 font-semibold'}`}>
+                        <WifiIcon className={isOnline ? 'text-green-400' : 'text-red-500'} />
+                        <span className={`text-sm font-medium hidden sm:block ${isOnline ? 'text-slate-300' : 'text-red-500 font-semibold'}`}>
                             {isOnline ? 'Online' : 'Offline'}
                         </span>
                     </div>

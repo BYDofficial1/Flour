@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction, Reminder, Settings } from './types';
 import Header from './components/Header';
@@ -862,7 +863,7 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-900">
             <Sidebar 
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}

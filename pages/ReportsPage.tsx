@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -15,13 +16,13 @@ interface ReportsPageProps {
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4 border border-primary-200/50">
-        <div className="bg-primary-100 p-3 rounded-full">
+    <div className="bg-slate-800 p-6 rounded-xl shadow-md flex items-center space-x-4 border border-slate-700">
+        <div className="bg-primary-500/10 p-3 rounded-full">
             {icon}
         </div>
         <div>
-            <p className="text-sm text-slate-500 font-medium">{title}</p>
-            <div className="text-2xl font-bold text-slate-800">{value}</div>
+            <p className="text-sm text-slate-400 font-medium">{title}</p>
+            <div className="text-2xl font-bold text-slate-100">{value}</div>
         </div>
     </div>
 );
@@ -64,18 +65,18 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
     return (
         <div className="mt-4 space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="text-2xl font-bold text-slate-700">Monthly Reports</h2>
+                <h2 className="text-2xl font-bold text-slate-200">Monthly Reports</h2>
                 <div className="flex items-center gap-4">
                     <input 
                         type="month"
                         value={selectedDate}
                         onChange={e => setSelectedDate(e.target.value)}
-                        className="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                        className="px-3 py-2 bg-slate-700 text-slate-100 border border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-primary-500 transition-colors"
                     />
                     <button
                         onClick={handleExport}
                         disabled={monthlyTransactions.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-500 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-colors"
                     >
                         <ExportIcon />
                         <span className="font-semibold">Export TXT</span>
@@ -87,33 +88,33 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                  <DashboardCard 
                     title="Total Sales"
                     value={formatCurrency(stats.totalSales)}
-                    icon={<RupeeIcon />}
+                    icon={<RupeeIcon className="text-primary-400" />}
                 />
                 <DashboardCard 
                     title="Total Quantity"
                     value={`${stats.totalQuantity.toLocaleString()} kg`}
-                    icon={<WeightIcon />}
+                    icon={<WeightIcon className="text-primary-400" />}
                 />
                  <DashboardCard 
                     title="Total Due"
                     value={formatCurrency(stats.totalDue)}
-                    icon={<ExclamationCircleIcon className="text-red-500" />}
+                    icon={<ExclamationCircleIcon className="text-red-400" />}
                 />
                 <DashboardCard 
                     title="Total Transactions"
                     value={stats.totalTransactions.toString()}
-                    icon={<ChartIcon />}
+                    icon={<ChartIcon className="text-primary-400" />}
                 />
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-md border border-slate-200/80">
-                 <h3 className="text-lg font-bold text-slate-800 mb-4">
+            <div className="bg-slate-800 p-4 rounded-lg shadow-md border border-slate-700">
+                 <h3 className="text-lg font-bold text-slate-100 mb-4">
                     Transactions for {new Date(selectedDate + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}
                  </h3>
                  {monthlyTransactions.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-slate-500">
-                             <thead className="text-xs text-slate-700 uppercase bg-slate-100/80">
+                        <table className="w-full text-sm text-left text-slate-400">
+                             <thead className="text-xs text-slate-300 uppercase bg-slate-900/70">
                                 <tr>
                                     <th scope="col" className="px-4 py-3 font-semibold">Date</th>
                                     <th scope="col" className="px-4 py-3 font-semibold">Customer</th>
@@ -125,12 +126,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                              </thead>
                              <tbody>
                                 {monthlyTransactions.map(t => (
-                                    <tr key={t.id} className="bg-white border-b hover:bg-primary-50/50">
+                                    <tr key={t.id} className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50">
                                         <td className="px-4 py-3">{new Date(t.date).toLocaleDateString('en-CA')}</td>
-                                        <td className="px-4 py-3 font-medium text-slate-800">{t.customerName}</td>
+                                        <td className="px-4 py-3 font-medium text-slate-200">{t.customerName}</td>
                                         <td className="px-4 py-3">{t.item}</td>
                                         <td className="px-4 py-3 text-right">{t.quantity.toFixed(2)} kg</td>
-                                        <td className="px-4 py-3 text-right font-semibold text-primary-600">{formatCurrency(t.total)}</td>
+                                        <td className="px-4 py-3 text-right font-semibold text-primary-400">{formatCurrency(t.total)}</td>
                                         <td className="px-4 py-3 text-center capitalize">{t.paymentStatus}</td>
                                     </tr>
                                 ))}
@@ -140,8 +141,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                  ) : (
                     <div className="text-center py-16 px-6">
                         <DocumentPlusIcon />
-                        <h3 className="text-xl font-semibold text-slate-700 mt-4">No transactions found for this month.</h3>
-                        <p className="text-slate-500 mt-2">Select a different month or add new transactions.</p>
+                        <h3 className="text-xl font-semibold text-slate-200 mt-4">No transactions found for this month.</h3>
+                        <p className="text-slate-400 mt-2">Select a different month or add new transactions.</p>
                     </div>
                  )}
             </div>
