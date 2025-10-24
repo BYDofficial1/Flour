@@ -1,12 +1,14 @@
 
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Transaction, Reminder } from './types';
+import type { Transaction, Reminder, Settings } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
+import SettingsPage from './pages/SettingsPage';
+import ReportsPage from './pages/ReportsPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
@@ -17,7 +19,7 @@ import { speak } from './utils/speech';
 import { formatCurrency } from './utils/currency';
 
 
-export type Page = 'transactions' | 'dashboard' | 'calculator';
+export type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -103,6 +105,24 @@ const App: React.FC = () => {
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [transactionForReminder, setTransactionForReminder] = useState<Transaction | null>(null);
 
+    // Settings state
+    const [settings, setSettings] = useState<Settings>({
+        soundEnabled: true,
+    });
+
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('app-settings');
+        if (savedSettings) {
+            setSettings(JSON.parse(savedSettings));
+        }
+    }, []);
+
+    const handleSaveSettings = (newSettings: Settings) => {
+        setSettings(newSettings);
+        localStorage.setItem('app-settings', JSON.stringify(newSettings));
+        addNotification('Settings saved!', 'success');
+    };
+
     const checkUnsyncedChanges = useCallback(() => {
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
         const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
@@ -128,45 +148,46 @@ const App: React.FC = () => {
         setTransactions(saved ? JSON.parse(saved) : []);
     }, []);
 
-    const loadInitialData = useCallback(async () => {
-        setIsLoading(true);
-        if (navigator.onLine) {
-            if (!isSupabaseConfigured) {
+    const fetchFromServerAndCache = useCallback(async () => {
+        if (!isOnline || !isSupabaseConfigured) {
+            if (!isSupabaseConfigured && isOnline) {
                 addNotification('Supabase not configured. Working in offline mode.', 'info');
-                loadFromCache();
-                setIsLoading(false);
-                return;
             }
-            try {
-                const { data, error } = await supabase!
-                    .from('transactions')
-                    .select('*')
-                    .order('date', { ascending: false });
-                if (error) throw error;
-                const mappedData = data.map(fromSupabase);
-                setTransactions(mappedData);
-                localStorage.setItem('transactions', JSON.stringify(mappedData));
-            } catch (error: any) {
-                console.error("Error fetching from Supabase, loading from cache:", error.message || error);
-                addNotification(`Failed to fetch data: ${error.message}. Working in offline mode.`, 'error');
-                loadFromCache();
-            }
-        } else {
-            loadFromCache();
+            return;
         }
-        setIsLoading(false);
-    }, [loadFromCache, addNotification, isSupabaseConfigured]);
+
+        try {
+            const { data, error } = await supabase!
+                .from('transactions')
+                .select('*')
+                .order('date', { ascending: false });
+            if (error) throw error;
+            const mappedData = data.map(fromSupabase);
+            setTransactions(mappedData);
+            localStorage.setItem('transactions', JSON.stringify(mappedData));
+        } catch (error: any) {
+            console.error("Error fetching from Supabase, working with cached data:", error.message || error);
+            addNotification(`Failed to fetch latest data: ${error.message}. Displaying cached version.`, 'error');
+        }
+    }, [isOnline, isSupabaseConfigured, addNotification]);
     
+    // Main effect for app initialization
     useEffect(() => {
+        // Step 1: Load from cache and render UI immediately
+        loadFromCache();
+        setIsLoading(false); // This will trigger the loader fade-out
+
+        // Step 2: Fetch latest data from server in the background
+        fetchFromServerAndCache();
+        
+        // The rest of the setup
         const handleOnline = () => setIsOnline(true);
         const handleOffline = () => setIsOnline(false);
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        loadInitialData();
         checkUnsyncedChanges();
 
-        // Load reminders from localStorage
         const savedReminders = localStorage.getItem('reminders');
         if (savedReminders) {
             setReminders(JSON.parse(savedReminders));
@@ -176,7 +197,22 @@ const App: React.FC = () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, [loadInitialData, checkUnsyncedChanges]);
+    }, [loadFromCache, fetchFromServerAndCache, checkUnsyncedChanges]);
+
+
+    // Effect to remove the HTML loader from the DOM
+    useEffect(() => {
+        if (!isLoading) {
+            const loader = document.getElementById('app-loader');
+            if (loader) {
+                loader.classList.add('fade-out');
+                setTimeout(() => {
+                    loader.remove();
+                }, 500); // Match CSS animation duration
+            }
+        }
+    }, [isLoading]);
+
 
     // Real-time Supabase subscription
     useEffect(() => {
@@ -331,9 +367,9 @@ const App: React.FC = () => {
             addNotification(`Sync failed. Some changes could not be saved. Error: ${error.message}`, 'error');
         }
         
-        await loadInitialData();
+        await fetchFromServerAndCache();
         setIsSyncing(false);
-    }, [isOnline, isSyncing, loadInitialData, clearQueues, addNotification, isSupabaseConfigured, setQueue]);
+    }, [isOnline, isSyncing, fetchFromServerAndCache, clearQueues, addNotification, isSupabaseConfigured, setQueue]);
 
     const handleResolveConflict = async (chosenVersion: Transaction, choice: 'local' | 'server') => {
         const conflict = conflicts.find(c => c.local.id === chosenVersion.id || c.server.id === chosenVersion.id);
@@ -355,7 +391,7 @@ const App: React.FC = () => {
         setQueue(SYNC_QUEUES.UPDATES, updates.filter(t => t.id !== chosenVersion.id));
         setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
         
-        await loadInitialData();
+        await fetchFromServerAndCache();
     };
 
     useEffect(() => {
@@ -420,7 +456,9 @@ const App: React.FC = () => {
                             // Fallback to an in-app toast notification if permission isn't granted
                             addNotification(notificationBody, 'info');
                         }
-                        speak(speechMessage);
+                        if (settings.soundEnabled) {
+                            speak(speechMessage);
+                        }
                     }
                 });
                 
@@ -431,7 +469,7 @@ const App: React.FC = () => {
         }, 60000); // Check every minute
         
         return () => clearInterval(interval);
-    }, [reminders, transactions, notificationPermission, addNotification]);
+    }, [reminders, transactions, notificationPermission, addNotification, settings.soundEnabled]);
 
     const handleOpenReminderModal = (transaction: Transaction) => {
         setTransactionForReminder(transaction);
@@ -447,6 +485,23 @@ const App: React.FC = () => {
         // Remove any existing reminder for this transaction before adding a new one
         setReminders(prev => [...prev.filter(r => r.transactionId !== transactionId), newReminder]);
         addNotification('Reminder set successfully!', 'success');
+        setIsReminderModalOpen(false);
+    };
+
+    const handleBulkSetReminders = (transactionIds: string[], remindAt: Date) => {
+        const newReminders = transactionIds.map(id => ({
+            id: crypto.randomUUID(),
+            transactionId: id,
+            remindAt: remindAt.toISOString(),
+        }));
+
+        // Remove old reminders for these transactions and add the new ones
+        setReminders(prev => [
+            ...prev.filter(r => !transactionIds.includes(r.transactionId)),
+            ...newReminders,
+        ]);
+
+        addNotification(`${transactionIds.length} reminders set successfully!`, 'success');
         setIsReminderModalOpen(false);
     };
     
@@ -663,6 +718,74 @@ const App: React.FC = () => {
         setDeletingTransactionId(null);
     }, [isOnline, transactions, deletingTransactionId, setQueue, addNotification, isSupabaseConfigured]);
 
+
+    const handleBulkDelete = useCallback(async (idsToDelete: string[]) => {
+        const newTransactions = transactions.filter(t => !idsToDelete.includes(t.id));
+        setTransactions(newTransactions);
+        localStorage.setItem('transactions', JSON.stringify(newTransactions));
+        addNotification(`${idsToDelete.length} transactions deleted!`, 'success');
+
+        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
+
+        const finalCreates = creates.filter(t => !idsToDelete.includes(t.id));
+        const finalUpdates = updates.filter(t => !idsToDelete.includes(t.id));
+        const finalDeletes = [...deletes, ...idsToDelete.filter(id => !creates.some(c => c.id === id))];
+        
+        setQueue(SYNC_QUEUES.CREATES, finalCreates);
+        setQueue(SYNC_QUEUES.UPDATES, finalUpdates);
+        setQueue(SYNC_QUEUES.DELETES, Array.from(new Set(finalDeletes))); // Ensure uniqueness
+
+        if (isOnline && isSupabaseConfigured) {
+            try {
+                const { error } = await supabase!.from('transactions').delete().in('id', idsToDelete);
+                if (error) throw error;
+            } catch (error: any) {
+                 addNotification('Network error. Deletions saved for offline sync.', 'info');
+            }
+        }
+    }, [transactions, setQueue, addNotification, isOnline, isSupabaseConfigured]);
+
+    const handleBulkUpdate = useCallback(async (idsToUpdate: string[], newStatus: Transaction['paymentStatus']) => {
+        const updatedTransactions = transactions.map(t => {
+            if (idsToUpdate.includes(t.id)) {
+                let paidAmount = t.paidAmount;
+                if (newStatus === 'paid') {
+                    paidAmount = t.total;
+                } else if (newStatus === 'unpaid') {
+                    paidAmount = 0;
+                }
+                return { ...t, paymentStatus: newStatus, paidAmount };
+            }
+            return t;
+        });
+        
+        setTransactions(updatedTransactions);
+        localStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+        addNotification(`${idsToUpdate.length} transactions updated to "${newStatus}"!`, 'success');
+
+        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+
+        const newCreates = creates.map(t => idsToUpdate.includes(t.id) ? updatedTransactions.find(ut => ut.id === t.id)! : t);
+        
+        const updatesFromState = updatedTransactions.filter(t => idsToUpdate.includes(t.id) && !creates.some(c => c.id === t.id));
+        const newUpdates = [...updates.filter(t => !idsToUpdate.includes(t.id)), ...updatesFromState];
+
+        setQueue(SYNC_QUEUES.CREATES, newCreates);
+        setQueue(SYNC_QUEUES.UPDATES, newUpdates);
+
+        if (isOnline && isSupabaseConfigured) {
+            try {
+                const { error } = await supabase!.from('transactions').upsert(updatesFromState.map(toSupabase));
+                if (error) throw error;
+            } catch (error: any) {
+                 addNotification('Network error. Updates saved for offline sync.', 'info');
+            }
+        }
+    }, [transactions, setQueue, addNotification, isOnline, isSupabaseConfigured]);
+
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => {
         setIsModalOpen(false);
@@ -699,7 +822,7 @@ const App: React.FC = () => {
                 <main className="container mx-auto p-4 md:p-6 lg:p-8">
                      {isLoading ? (
                         <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+                            {/* The loader is now in index.html, so this part can be empty or a lighter spinner if needed after initial load */}
                         </div>
                     ) : (
                         <>
@@ -719,6 +842,9 @@ const App: React.FC = () => {
                                     isEditMode={isEditMode}
                                     onSetReminder={handleOpenReminderModal}
                                     reminders={reminders}
+                                    onBulkDelete={handleBulkDelete}
+                                    onBulkUpdate={handleBulkUpdate}
+                                    onBulkSetReminder={handleBulkSetReminders}
                                 />
                             )}
                             {currentPage === 'dashboard' && (
@@ -731,6 +857,16 @@ const App: React.FC = () => {
                             {currentPage === 'calculator' && (
                                 <CalculatorPage isEditMode={isEditMode} />
                             )}
+                             {currentPage === 'settings' && (
+                                <SettingsPage
+                                    currentSettings={settings}
+                                    onSave={handleSaveSettings}
+                                    isEditMode={isEditMode}
+                                />
+                             )}
+                             {currentPage === 'reports' && (
+                                <ReportsPage transactions={transactions} />
+                             )}
                         </>
                     )}
                 </main>

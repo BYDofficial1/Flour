@@ -1,8 +1,13 @@
 
-import React from 'react';
+
+import React, { useState, useCallback } from 'react';
 import type { Transaction, Reminder } from '../types';
 import type { TimeFilter } from '../App';
 import TransactionList from '../components/TransactionList';
+import BulkActionBar from '../components/BulkActionBar';
+import ChangeStatusModal from '../components/ChangeStatusModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import ReminderModal from '../components/ReminderModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { SearchIcon } from '../components/icons/SearchIcon';
 import { ExportIcon } from '../components/icons/ExportIcon';
@@ -64,6 +69,9 @@ interface TransactionsPageProps {
     isEditMode: boolean;
     onSetReminder: (transaction: Transaction) => void;
     reminders: Reminder[];
+    onBulkDelete: (ids: string[]) => void;
+    onBulkUpdate: (ids: string[], newStatus: Transaction['paymentStatus']) => void;
+    onBulkSetReminder: (ids: string[], remindAt: Date) => void;
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
@@ -81,10 +89,60 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     isEditMode,
     onSetReminder,
     reminders,
+    onBulkDelete,
+    onBulkUpdate,
+    onBulkSetReminder
 }) => {
+    const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(new Set());
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+
+    const handleSelectOne = useCallback((id: string) => {
+        setSelectedTransactionIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    }, []);
+
+    const handleSelectAll = useCallback((select: boolean) => {
+        if (select) {
+            setSelectedTransactionIds(new Set(transactions.map(t => t.id)));
+        } else {
+            setSelectedTransactionIds(new Set());
+        }
+    }, [transactions]);
+    
+    const handleClearSelection = () => {
+        setSelectedTransactionIds(new Set());
+    };
+
+    const handleConfirmBulkDelete = () => {
+        onBulkDelete(Array.from(selectedTransactionIds));
+        handleClearSelection();
+        setIsDeleteModalOpen(false);
+    };
+
+    const handleConfirmBulkStatusChange = (newStatus: Transaction['paymentStatus']) => {
+        onBulkUpdate(Array.from(selectedTransactionIds), newStatus);
+        handleClearSelection();
+        setIsStatusModalOpen(false);
+    };
+
+    const handleConfirmBulkReminder = (_: string, remindAt: Date) => {
+        // First argument is transactionId, which we ignore in bulk mode
+        onBulkSetReminder(Array.from(selectedTransactionIds), remindAt);
+        handleClearSelection();
+        setIsReminderModalOpen(false);
+    };
 
     return (
-        <div className="mt-4 space-y-6">
+        <div className="mt-4 space-y-6 pb-24">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="text-2xl font-bold text-slate-700 self-start">All Transactions</h2>
                 <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-4">
@@ -136,6 +194,36 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 isEditMode={isEditMode}
                 onSetReminder={onSetReminder}
                 reminders={reminders}
+                selectedIds={selectedTransactionIds}
+                onSelectOne={handleSelectOne}
+                onSelectAll={handleSelectAll}
+            />
+            {isEditMode && selectedTransactionIds.size > 0 && (
+                <BulkActionBar
+                    count={selectedTransactionIds.size}
+                    onClear={handleClearSelection}
+                    onDelete={() => setIsDeleteModalOpen(true)}
+                    onChangeStatus={() => setIsStatusModalOpen(true)}
+                    onSetReminder={() => setIsReminderModalOpen(true)}
+                />
+            )}
+            <ChangeStatusModal
+                isOpen={isStatusModalOpen}
+                onClose={() => setIsStatusModalOpen(false)}
+                onConfirm={handleConfirmBulkStatusChange}
+            />
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmBulkDelete}
+                title={`Delete ${selectedTransactionIds.size} Transactions`}
+                message={`Are you sure you want to delete these ${selectedTransactionIds.size} transactions? This action cannot be undone.`}
+            />
+            <ReminderModal
+                isOpen={isReminderModalOpen}
+                onClose={() => setIsReminderModalOpen(false)}
+                onSetReminder={handleConfirmBulkReminder}
+                transaction={{id: 'bulk', customerName: `${selectedTransactionIds.size} customers`} as any}
             />
         </div>
     );

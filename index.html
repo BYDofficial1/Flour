@@ -10,6 +10,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Chakki Hisab">
+
+    <!-- Preconnect to critical origins to speed up initial load -->
+    <link rel="preconnect" href="https://aistudiocdn.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://uywayhjzjxwtkoibladb.supabase.co" crossorigin>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -73,15 +78,6 @@
       -moz-appearance: textfield;
     }
     
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    body {
-        animation: fadeIn 0.5s ease-out forwards;
-    }
-    
     /* Smooth transitions for all elements */
     * {
         transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -92,10 +88,77 @@
         outline: 2px solid var(--tw-color-primary-600) !important;
         outline-offset: 2px !important;
     }
+
+    /* --- Loading Screen Styles --- */
+    #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background-color: #1c1917; /* stone-900 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        transition: opacity 0.5s ease-out;
+    }
+    #app-loader.fade-out {
+        opacity: 0;
+    }
+    .loader-wheat-icon {
+        width: 6rem; /* 96px */
+        height: 6rem; /* 96px */
+        color: #f59e0b; /* amber-500 */
+        margin-bottom: 2rem;
+        animation: pulse-glow 2.5s infinite ease-in-out;
+    }
+    .loader-text {
+        color: #a8a29e; /* stone-400 */
+        font-family: monospace, sans-serif;
+        font-size: 1.125rem; /* text-lg */
+    }
+    .typing-text {
+        font-weight: bold;
+        color: #fcd34d; /* amber-300 */
+    }
+    .typing-cursor {
+        display: inline-block;
+        width: 10px;
+        height: 1.2rem;
+        background-color: #fcd34d;
+        animation: blink 0.7s infinite;
+        margin-left: 4px;
+        vertical-align: middle;
+    }
+
+    @keyframes pulse-glow {
+        0%, 100% {
+            transform: scale(1);
+            filter: drop-shadow(0 0 5px #f59e0b);
+        }
+        50% {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 15px #f59e0b);
+        }
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
 </style>
 </head>
 <body class="bg-primary-50">
+    <div id="app-loader">
+        <svg xmlns="http://www.w3.org/2000/svg" class="loader-wheat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 12c0-2.5-2.5-6-2.5-6s-2.5 3.5-2.5 6c0 2.2-1.8 4-4 4s-4-1.8-4-4c0-2.5-2.5-6-2.5-6S4 9.5 4 12c0 4.4 3.6 8 8 8s8-3.6 8-8z" />
+            <path d="M12 2v2" /><path d="M11 2.5a.5.5 0 0 1 1 0V4a.5.5 0 0 1-1 0z" /><path d="M13 2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0z" /><path d="M14 4.5s-1-1.5-1-3.5" /><path d="M10 4.5s1-1.5 1-3.5" />
+        </svg>
+        <div id="loader-text-container" class="loader-text">
+            Made By <span class="typing-text"></span><span class="typing-cursor"></span>
+        </div>
+    </div>
+
     <div id="root"></div>
+
     <script type="module" src="/index.tsx"></script>
     <script>
       tailwind.config = {
@@ -130,6 +193,21 @@
             });
         });
       }
+
+      // Typing animation script
+      document.addEventListener('DOMContentLoaded', () => {
+          const textToType = "Malik Shahzaib Mukhtiar";
+          const typingElement = document.querySelector('.typing-text');
+          let i = 0;
+          function typeWriter() {
+              if (i < textToType.length) {
+                  typingElement.innerHTML += textToType.charAt(i);
+                  i++;
+                  setTimeout(typeWriter, 100 + Math.random() * 50);
+              }
+          }
+          typeWriter();
+      });
     </script>
 </body>
 </html>

@@ -1,7 +1,5 @@
 
 
-
-
 export interface Transaction {
     id: string;
     customerName: string;
@@ -41,5 +39,5 @@ export interface Reminder {
 export type Theme = 'amber' | 'blue' | 'green' | 'slate';
 
 export interface Settings {
-    theme: Theme;
+    soundEnabled: boolean;
 }

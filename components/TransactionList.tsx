@@ -18,7 +18,23 @@ interface TransactionListProps {
     isEditMode: boolean;
     onSetReminder: (transaction: Transaction) => void;
     reminders: Reminder[];
+    selectedIds: Set<string>;
+    onSelectOne: (id: string) => void;
+    onSelectAll: (select: boolean) => void;
 }
+
+type ReminderStatus = 'due' | 'soon' | 'upcoming';
+
+const getReminderStatus = (remindAt: string): ReminderStatus => {
+    const now = new Date();
+    const reminderDate = new Date(remindAt);
+    const diffHours = (reminderDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (diffHours <= 1) return 'due'; // Overdue or within the hour
+    if (diffHours <= 24) return 'soon'; // Within 24 hours
+    return 'upcoming'; // More than 24 hours away
+};
+
 
 const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ status }) => {
     const baseClasses = "px-2 py-0.5 text-xs font-semibold rounded-full capitalize";
@@ -30,7 +46,18 @@ const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ statu
     return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
 };
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, unsyncedIds, isEditMode, onSetReminder, reminders }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ 
+    transactions, 
+    onEdit, 
+    onDelete, 
+    unsyncedIds, 
+    isEditMode, 
+    onSetReminder, 
+    reminders,
+    selectedIds,
+    onSelectOne,
+    onSelectAll
+}) => {
     if (transactions.length === 0) {
         return (
             <div className="text-center py-16 px-6 bg-white rounded-lg shadow-md border-2 border-dashed border-slate-200">
@@ -41,28 +68,42 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
         );
     }
 
+    const allVisibleSelected = transactions.length > 0 && transactions.every(t => selectedIds.has(t.id));
+
     // A more detailed and visually appealing card for mobile view
     const TransactionCard: React.FC<{ t: Transaction }> = ({ t }) => {
         const isUnsynced = unsyncedIds.has(t.id);
-        const hasReminder = reminders.some(r => r.transactionId === t.id);
+        const reminder = reminders.find(r => r.transactionId === t.id);
+        const reminderStatus = reminder ? getReminderStatus(reminder.remindAt) : undefined;
         const balanceDue = t.total - (t.paidAmount || 0);
         const canSetReminder = t.paymentStatus !== 'paid';
         const showActions = isEditMode || canSetReminder;
+        const reminderTooltip = reminder ? `Reminder set for: ${new Date(reminder.remindAt).toLocaleString()}` : 'Set a reminder for this transaction';
 
         return (
-            <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-4 overflow-hidden border border-slate-200/80">
+            <div className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 mb-4 overflow-hidden border ${selectedIds.has(t.id) ? 'border-primary-500 ring-2 ring-primary-500/50' : 'border-slate-200/80'}`}>
                 <div className="p-4 border-l-4 border-primary-500">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                                {t.customerName}
-                                {isUnsynced && (
-                                    <span title="Pending sync">
-                                        <ClockIcon className="h-4 w-4 text-primary-500" />
-                                    </span>
-                                )}
-                            </p>
-                            <p className="text-sm text-slate-600 font-medium">{t.item}</p>
+                     <div className="flex justify-between items-start">
+                        <div className="flex items-start gap-3">
+                           {isEditMode && (
+                                <input
+                                    type="checkbox"
+                                    className="mt-1.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                    checked={selectedIds.has(t.id)}
+                                    onChange={() => onSelectOne(t.id)}
+                                />
+                           )}
+                           <div>
+                                <p className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                    {t.customerName}
+                                    {isUnsynced && (
+                                        <span title="Pending sync">
+                                            <ClockIcon className="h-4 w-4 text-primary-500" />
+                                        </span>
+                                    )}
+                                </p>
+                                <p className="text-sm text-slate-600 font-medium">{t.item}</p>
+                           </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-4">
                             <p className="text-xl font-bold text-primary-600">{formatCurrency(t.total)}</p>
@@ -121,8 +162,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                  {showActions && (
                     <div className="bg-slate-50/70 px-4 py-2 flex justify-end items-center space-x-2">
                         {canSetReminder && (
-                            <button onClick={() => onSetReminder(t)} className={`flex items-center gap-1.5 text-sm font-semibold py-1 px-3 rounded-md transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-600 hover:bg-slate-200'}`} aria-label="Set reminder">
-                                <BellIcon isActive={hasReminder}/> {hasReminder ? 'Reminder Set' : 'Remind'}
+                            <button onClick={() => onSetReminder(t)} title={reminderTooltip} className={`flex items-center gap-1.5 text-sm font-semibold py-1 px-3 rounded-md transition-colors ${!!reminder ? 'text-slate-800 hover:bg-slate-200' : 'text-slate-600 hover:bg-slate-200'}`} aria-label="Set reminder">
+                                <BellIcon isActive={!!reminder} status={reminderStatus} /> {!!reminder ? 'Reminder Set' : 'Remind'}
                             </button>
                         )}
                         {isEditMode && (
@@ -154,6 +195,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                     <table className="w-full text-sm text-left text-slate-500">
                         <thead className="text-xs text-slate-700 uppercase bg-slate-100/80">
                             <tr>
+                                {isEditMode && (
+                                    <th scope="col" className="px-4 py-4">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                            checked={allVisibleSelected}
+                                            onChange={(e) => onSelectAll(e.target.checked)}
+                                            aria-label="Select all transactions on this page"
+                                        />
+                                    </th>
+                                )}
                                 <th scope="col" className="px-4 py-4 font-semibold">Customer</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Item</th>
                                 <th scope="col" className="px-4 py-4 font-semibold">Details</th>
@@ -166,13 +218,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                         <tbody>
                             {transactions.map(t => {
                                 const isUnsynced = unsyncedIds.has(t.id);
-                                const hasReminder = reminders.some(r => r.transactionId === t.id);
+                                const reminder = reminders.find(r => r.transactionId === t.id);
+                                const reminderStatus = reminder ? getReminderStatus(reminder.remindAt) : undefined;
                                 const balanceDue = t.total - (t.paidAmount || 0);
                                 const canSetReminder = t.paymentStatus !== 'paid';
+                                const reminderTooltip = reminder ? `Reminder set for: ${new Date(reminder.remindAt).toLocaleString()}` : 'Set a reminder for this transaction';
 
                                 return (
                                 <React.Fragment key={t.id}>
-                                    <tr className="bg-white border-b hover:bg-primary-50/50 transition-colors duration-200">
+                                    <tr className={`border-b transition-colors duration-200 ${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-primary-50/50'}`}>
+                                        {isEditMode && (
+                                            <td className="px-4 py-4 align-top">
+                                                 <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                                    checked={selectedIds.has(t.id)}
+                                                    onChange={() => onSelectOne(t.id)}
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-4 py-4 font-medium text-slate-900 align-top">
                                             <div className="flex items-center gap-2">
                                                  <span>{t.customerName}</span>
@@ -208,9 +272,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                         <td className="px-4 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
                                         <td className="px-4 py-4 text-center align-top">
                                             <div className="flex justify-center items-center space-x-1">
-                                                {canSetReminder && (
-                                                    <button onClick={() => onSetReminder(t)} className={`p-2 rounded-full transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-500 hover:bg-slate-100'}`} aria-label="Set reminder">
-                                                        <BellIcon isActive={hasReminder} />
+                                                {canSetReminder && !isEditMode && (
+                                                    <button onClick={() => onSetReminder(t)} title={reminderTooltip} className={`p-2 rounded-full transition-colors text-slate-500 hover:bg-slate-100`} aria-label="Set reminder">
+                                                        <BellIcon isActive={!!reminder} status={reminderStatus} />
                                                     </button>
                                                 )}
                                                 {isEditMode && (
@@ -227,7 +291,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                         </td>
                                     </tr>
                                     {t.notes && (
-                                        <tr className="bg-white border-b hover:bg-primary-50/50">
+                                        <tr className={`${selectedIds.has(t.id) ? 'bg-primary-100/50' : 'bg-white hover:bg-primary-50/50'} border-b`}>
+                                            {isEditMode && <td className="px-4"></td>}
                                             <td colSpan={7} className="px-6 py-3 text-sm text-slate-700">
                                                 <div className="p-2 bg-yellow-50 rounded-md border border-yellow-200">
                                                     <strong className="font-semibold text-slate-800">Note:</strong> <span className="italic">{t.notes}</span>

@@ -7,8 +7,10 @@ import { CloseIcon } from './icons/CloseIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
 import { BellIcon } from './icons/BellIcon';
+import { CogIcon } from './icons/CogIcon';
+import { DocumentTextIcon } from './icons/DocumentTextIcon';
 
-type Page = 'transactions' | 'dashboard' | 'calculator';
+type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -91,23 +93,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
 
                     <nav>
                         <ul className="space-y-2">
-                            <NavItem
-                                label="Transactions"
-                                icon={<ListBulletIcon />}
-                                isActive={currentPage === 'transactions'}
-                                onClick={() => handleNavigation('transactions')}
-                            />
-                            <NavItem
+                             <NavItem
                                 label="Dashboard"
                                 icon={<ChartIcon />}
                                 isActive={currentPage === 'dashboard'}
                                 onClick={() => handleNavigation('dashboard')}
                             />
                             <NavItem
+                                label="Transactions"
+                                icon={<ListBulletIcon />}
+                                isActive={currentPage === 'transactions'}
+                                onClick={() => handleNavigation('transactions')}
+                            />
+                             <NavItem
+                                label="Reports"
+                                icon={<DocumentTextIcon />}
+                                isActive={currentPage === 'reports'}
+                                onClick={() => handleNavigation('reports')}
+                            />
+                            <NavItem
                                 label="Calculator"
                                 icon={<CalculatorIcon />}
                                 isActive={currentPage === 'calculator'}
                                 onClick={() => handleNavigation('calculator')}
+                            />
+                             <NavItem
+                                label="Settings"
+                                icon={<CogIcon />}
+                                isActive={currentPage === 'settings'}
+                                onClick={() => handleNavigation('settings')}
                             />
                         </ul>
                     </nav>

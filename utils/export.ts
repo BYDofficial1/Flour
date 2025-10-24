@@ -1,4 +1,5 @@
 import type { Transaction } from '../types';
+import { formatCurrency } from './currency';
 
 export const exportTransactionsToTxt = (transactions: Transaction[]) => {
     if (transactions.length === 0) {
@@ -76,6 +77,67 @@ ${t.notes || 'No notes provided.'}
 
     const dateString = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
     link.setAttribute("download", `transactions_report_${dateString}.txt`);
+
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+
+export const exportMonthlyReportToTxt = (transactions: Transaction[], date: Date, stats: any) => {
+    const monthYear = date.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    const now = new Date();
+    const exportDateTime = now.toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+
+    let reportContent = `
+*********************************************
+      ATTA CHAKKI HISAB - MONTHLY REPORT
+*********************************************
+
+Report for:         ${monthYear}
+Export Date:        ${exportDateTime}
+
+---------------------------------------------
+          MONTHLY SUMMARY
+---------------------------------------------
+Total Sales:        ${formatCurrency(stats.totalSales)}
+Total Quantity:     ${stats.totalQuantity.toFixed(2)} kg
+Total Transactions: ${stats.totalTransactions}
+Total Due Balance:  ${formatCurrency(stats.totalDue)}
+
+---------------------------------------------
+          TRANSACTION DETAILS
+---------------------------------------------
+`;
+
+    transactions.forEach((t, index) => {
+        const balanceDue = t.total - (t.paidAmount || 0);
+        reportContent += `
+---------------------------------------------
+  #${index + 1} | ${new Date(t.date).toLocaleDateString('en-CA')} | ${t.customerName}
+---------------------------------------------
+  Item:         ${t.item}
+  Quantity:     ${t.quantity.toFixed(2)} kg @ ${formatCurrency(t.rate)}/kg
+  Total:        ${formatCurrency(t.total)}
+  Status:       ${t.paymentStatus.toUpperCase()} (Due: ${formatCurrency(balanceDue)})
+`;
+    });
+
+    reportContent += `
+*********************************************
+            END OF REPORT
+*********************************************
+`;
+
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+
+    const dateString = `${date.getFullYear()}_${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    link.setAttribute("download", `monthly_report_${dateString}.txt`);
 
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
