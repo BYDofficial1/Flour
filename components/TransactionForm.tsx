@@ -23,7 +23,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
     const [errors, setErrors] = useState<{ quantity?: string; rate?: string; grindingCost?: string, cleaningCost?: string }>({});
 
     const isEditing = !!initialData;
-    const total = (parseFloat(quantity) || 0) * (parseFloat(rate) || 0) + (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0);
+    const totalRaw = (parseFloat(quantity) || 0) * (parseFloat(rate) || 0) + (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0);
+    const total = Math.round((totalRaw + Number.EPSILON) * 100) / 100;
     const hasErrors = Object.values(errors).some(Boolean);
     
     const resetForm = useCallback(() => {
@@ -45,20 +46,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
     }, [initialData, prefilledData, isOpen, resetForm]);
     
     const handleNumberChange = (value: string, field: 'quantity' | 'rate' | 'grindingCost' | 'cleaningCost') => {
+        // Prevent negative signs from being part of the value.
+        if (value.startsWith('-')) {
+            return; // Simply don't update the state if a negative is typed.
+        }
+        
         if (field === 'quantity') setQuantity(value);
         if (field === 'rate') setRate(value);
         if (field === 'grindingCost') setGrindingCost(value);
         if (field === 'cleaningCost') setCleaningCost(value);
 
-        if (parseFloat(value) < 0) {
-            setErrors(prev => ({ ...prev, [field]: 'Value must not be negative.' }));
-        } else {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
+        // Clear any potential error for this field as we've blocked negative values.
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[field];
+            return newErrors;
+        });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -116,6 +119,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                             <option>Wheat Grinding</option>
                             <option>Flour Sale</option>
                             <option>Daliya Grinding</option>
+                            <option>Daliya Sale</option>
                             <option>Other</option>
                         </select>
                     </div>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Calculation } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -87,18 +86,18 @@ const RateCalculator: React.FC = () => {
     const [errors, setErrors] = useState<{ weight?: string; amount?: string }>({});
     
     const handleNumberChange = (value: string, field: 'weight' | 'amount') => {
+        if (value.startsWith('-')) {
+            return;
+        }
+
         if (field === 'weight') setWeight(value);
         if (field === 'amount') setAmount(value);
-
-        if (parseFloat(value) < 0) {
-            setErrors(prev => ({ ...prev, [field]: 'Value must not be negative.' }));
-        } else {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
-        }
+        
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[field];
+            return newErrors;
+        });
     };
 
     const calculation = useMemo(() => {
@@ -106,7 +105,8 @@ const RateCalculator: React.FC = () => {
         const numAmount = parseFloat(amount);
 
         if (numWeight > 0 && !isNaN(numAmount) && numAmount >= 0) {
-            const rate = numAmount / numWeight;
+            const rawRate = numAmount / numWeight;
+            const rate = Math.round((rawRate + Number.EPSILON) * 100) / 100;
             return { rate };
         }
         return { rate: 0 };
@@ -208,20 +208,23 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
         const totalKg = bags.reduce((acc, curr) => acc + curr.weight, 0);
         const maundPrice = parseFloat(pricePerMaund);
 
-        const totalPrice = (maundPrice > 0 && totalKg > 0)
+        const rawTotalPrice = (maundPrice > 0 && totalKg > 0)
             ? (totalKg / MAUND_IN_KG) * maundPrice
             : 0;
+        const totalPrice = Math.round((rawTotalPrice + Number.EPSILON) * 100) / 100;
 
         if (totalKg === 0) {
-            return { totalKg: 0, totalPrice: 0, maunds: 0, kilos: 0, ratePerKg: 0, isValid: false };
+            return { totalKg: 0, totalPrice: 0, maans: 0, kilos: 0, ratePerKg: 0, isValid: false };
         }
 
-        const maunds = Math.floor(totalKg / MAUND_IN_KG);
+        const maans = Math.floor(totalKg / MAUND_IN_KG);
         const kilos = totalKg % MAUND_IN_KG;
-        const ratePerKg = maundPrice > 0 ? maundPrice / MAUND_IN_KG : 0;
         
-        return { totalKg, totalPrice, maunds, kilos, ratePerKg, isValid: true };
-    }, [bags, pricePerMaund, MAUND_IN_KG]);
+        const rawRatePerKg = maundPrice > 0 ? maundPrice / MAUND_IN_KG : 0;
+        const ratePerKg = Math.round((rawRatePerKg + Number.EPSILON) * 100) / 100;
+        
+        return { totalKg, totalPrice, maans, kilos, ratePerKg, isValid: true };
+    }, [bags, pricePerMaund]);
     
     const handleSave = async (customerName: string, notes: string) => {
         if (!calculation.isValid) return;
@@ -252,9 +255,9 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
             <div className="space-y-6">
                 <InputField
                     id="pricePerMaund"
-                    label="Price per Maund (40 kg)"
+                    label="Price per Maan (40 kg) (Optional)"
                     value={pricePerMaund}
-                    onChange={setPricePerMaund}
+                    onChange={(val) => { if (!val.startsWith('-')) setPricePerMaund(val); }}
                     placeholder="e.g., 2200"
                 />
                  <div>
@@ -265,7 +268,7 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                             id="bagWeight"
                             value={currentWeight}
                             onChange={(e) => {
-                                setCurrentWeight(e.target.value);
+                                if (!e.target.value.startsWith('-')) setCurrentWeight(e.target.value);
                                 if (error) setError(null);
                             }}
                             onKeyPress={handleKeyPress}
@@ -300,9 +303,9 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                 
                 <div className="bg-primary-50 p-6 rounded-lg border border-primary-200 space-y-4 text-center">
                     <div>
-                         <p className="text-base font-medium text-slate-600">Total Weight (Maunds)</p>
+                         <p className="text-base font-medium text-slate-600">Total Weight (Maans)</p>
                          <p className="text-4xl font-bold text-primary-600 mt-1">
-                            {calculation.maunds}<span className="text-xl font-semibold text-slate-500"> Maund</span>
+                            {calculation.maans}<span className="text-xl font-semibold text-slate-500"> Maan</span>
                              <span className="text-2xl font-bold text-primary-600/90 ml-2">
                                  {calculation.kilos.toFixed(2)}<span className="text-lg font-semibold text-slate-500"> kg</span>
                              </span>
@@ -319,12 +322,21 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                         <div className="border-t border-primary-200/80 pt-4">
                             <p className="text-base font-medium text-slate-600">Total Price</p>
                             <p className="text-3xl font-bold text-primary-600 mt-1">
-                               {formatCurrency(calculation.totalPrice)}
-                           </p>
-                            {calculation.ratePerKg > 0 && (
-                                <p className="text-sm text-slate-500 font-medium mt-1">
-                                    ({formatCurrency(calculation.ratePerKg)} / kg)
-                                </p>
+                                {formatCurrency(calculation.totalPrice)}
+                            </p>
+                            {(parseFloat(pricePerMaund) > 0 || calculation.ratePerKg > 0) && (
+                                <div className="text-sm text-slate-500 font-medium mt-2 space-y-1 text-center">
+                                    {parseFloat(pricePerMaund) > 0 && (
+                                        <p>
+                                            <span className="font-semibold">{formatCurrency(parseFloat(pricePerMaund))}</span> / Maan
+                                        </p>
+                                    )}
+                                    {calculation.ratePerKg > 0 && (
+                                         <p>
+                                           <span className="font-semibold">{formatCurrency(calculation.ratePerKg)}</span> / kg
+                                        </p>
+                                    )}
+                                </div>
                             )}
                        </div>
                     )}
@@ -337,17 +349,15 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                 >
                     Reset
                 </button>
-                 {isEditMode && (
-                    <button
-                        onClick={() => setIsSaving(true)}
-                        disabled={!calculation.isValid || isSaving}
-                        className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:bg-primary-400/50 transition-colors"
-                    >
-                        Save Calculation
-                    </button>
-                 )}
+                <button
+                    onClick={() => setIsSaving(true)}
+                    disabled={!calculation.isValid || isSaving}
+                    className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:bg-primary-400/50 transition-colors"
+                >
+                    Save Calculation
+                </button>
             </div>
-            {isSaving && isEditMode && <SaveCalculationForm onSave={handleSave} onCancel={() => setIsSaving(false)} />}
+            {isSaving && <SaveCalculationForm onSave={handleSave} onCancel={() => setIsSaving(false)} />}
         </div>
     );
 };
@@ -380,10 +390,11 @@ const EditCalculationModal: React.FC<{
         const totalKg = bags.reduce((acc, curr) => acc + curr.weight, 0);
         const maundPrice = parseFloat(pricePerMaund);
         const totalPrice = (maundPrice > 0 && totalKg > 0) ? (totalKg / MAUND_IN_KG) * maundPrice : 0;
-        const maunds = Math.floor(totalKg / MAUND_IN_KG);
+        const maans = Math.floor(totalKg / MAUND_IN_KG);
         const kilos = totalKg % MAUND_IN_KG;
-        return { totalKg, totalPrice, maunds, kilos };
-    }, [bags, pricePerMaund, MAUND_IN_KG]);
+        const ratePerKg = maundPrice > 0 ? maundPrice / MAUND_IN_KG : 0;
+        return { totalKg, totalPrice, maans, kilos, ratePerKg };
+    }, [bags, pricePerMaund]);
 
 
     const handleAddBag = () => {
@@ -425,7 +436,7 @@ const EditCalculationModal: React.FC<{
                 </div>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                     <InputField id="editCustomerName" label="Customer Name" value={customerName} onChange={setCustomerName} placeholder="Enter customer name" type="text" />
-                    <InputField id="editPricePerMaund" label="Price per Maund (40 kg)" value={pricePerMaund} onChange={setPricePerMaund} placeholder="e.g., 2200" />
+                    <InputField id="editPricePerMaund" label="Price per Maan (40 kg)" value={pricePerMaund} onChange={setPricePerMaund} placeholder="e.g., 2200" />
                     
                     <div>
                         <label htmlFor="editBagWeight" className="block text-sm font-medium text-slate-700">Add Bag Weight</label>
@@ -454,12 +465,22 @@ const EditCalculationModal: React.FC<{
                         <div>
                             <p className="text-sm font-medium text-slate-600">Total Weight</p>
                             <p className="text-2xl font-bold text-primary-600">
-                                {liveCalculation.maunds} <span className="text-base font-semibold text-slate-500">Maund</span>, {liveCalculation.kilos.toFixed(2)} <span className="text-base font-semibold text-slate-500">kg</span>
+                                {liveCalculation.maans} <span className="text-base font-semibold text-slate-500">Maan</span>, {liveCalculation.kilos.toFixed(2)} <span className="text-base font-semibold text-slate-500">kg</span>
                             </p>
                         </div>
                         <div className="border-t border-primary-100 pt-3">
                             <p className="text-sm font-medium text-slate-600">New Total Price</p>
                             <p className="text-3xl font-bold text-primary-600">{formatCurrency(liveCalculation.totalPrice)}</p>
+                             {(parseFloat(pricePerMaund) > 0 || liveCalculation.ratePerKg > 0) && (
+                                <div className="text-xs text-slate-500 font-medium mt-1">
+                                    {parseFloat(pricePerMaund) > 0 && (
+                                        <span>{formatCurrency(parseFloat(pricePerMaund))} / Maan</span>
+                                    )}
+                                    {liveCalculation.ratePerKg > 0 && (
+                                         <span className="ml-2 pl-2 border-l border-slate-300">{formatCurrency(liveCalculation.ratePerKg)} / kg</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -492,7 +513,9 @@ const SavedCalculationsList: React.FC<{ calculations: Calculation[], onDelete: (
         <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full border border-primary-200/50">
             <h3 className="text-xl font-bold text-slate-700 mb-4">Saved Calculations</h3>
             <ul className="space-y-4">
-                {calculations.map(calc => (
+                {calculations.map(calc => {
+                    const ratePerKg = (calc.price_per_maund || 0) / 40;
+                    return (
                     <li key={calc.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200/80">
                         <div className="flex justify-between items-start gap-3">
                             <div className="flex-1">
@@ -502,12 +525,14 @@ const SavedCalculationsList: React.FC<{ calculations: Calculation[], onDelete: (
                                 </p>
                                 <div className="mt-2 text-sm text-left">
                                      <p className="font-semibold text-slate-700">{calc.total_kg.toFixed(2)} kg</p>
+                                     <p className="font-bold text-primary-600 mt-1">{formatCurrency(calc.total_price)}</p>
                                      {calc.price_per_maund && calc.price_per_maund > 0 && (
-                                         <p className="text-xs text-slate-500">
-                                             @ {formatCurrency(calc.price_per_maund)} / Maund
+                                         <p className="text-xs text-slate-500 mt-1">
+                                             {formatCurrency(ratePerKg)} / kg
+                                             <span className="mx-1 text-slate-300">|</span>
+                                             {formatCurrency(calc.price_per_maund)} / Maan
                                          </p>
                                      )}
-                                     <p className="font-bold text-primary-600 mt-1">{formatCurrency(calc.total_price)}</p>
                                 </div>
                             </div>
                             {isEditMode && (
@@ -529,7 +554,7 @@ const SavedCalculationsList: React.FC<{ calculations: Calculation[], onDelete: (
                             </div>
                         )}
                     </li>
-                ))}
+                )})}
             </ul>
         </div>
     )
@@ -652,7 +677,7 @@ const CalculatorPage: React.FC<{isEditMode: boolean}> = ({ isEditMode }) => {
                                 onClick={() => setActiveCalculator(type)}
                                 className={`w-1/2 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${activeCalculator === type ? 'bg-primary-500 text-white shadow' : 'text-slate-600'}`}
                             >
-                                {type === 'maund' ? 'Maund Calculator' : 'Rate Calculator'}
+                                {type === 'maund' ? 'Maan Calculator' : 'Rate Calculator'}
                             </button>
                         ))}
                     </div>
