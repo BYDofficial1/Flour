@@ -1,90 +1,27 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import type { Calculation } from '../types';
+import React, { useState, useMemo, useCallback } from 'react';
 import { formatCurrency } from '../utils/currency';
-import { supabase } from '../utils/supabase';
-import { useNotifier } from '../context/NotificationContext';
-import { DeleteIcon } from '../components/icons/DeleteIcon';
-import { EditIcon } from '../components/icons/EditIcon';
-import { CalendarIcon } from '../components/icons/CalendarIcon';
-import { CloseIcon } from '../components/icons/CloseIcon';
 
-
-type CalculatorType = 'maund' | 'rate';
-const CALC_CACHE_KEY = 'saved_calculations';
+type CalculatorType = 'list' | 'rate';
 const formInputClasses = "mt-1 block w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-md shadow-sm text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-primary-500 focus:border-primary-500 transition-colors text-slate-100 placeholder-slate-400";
-const smallFormInputClasses = formInputClasses.replace('text-lg', 'text-base').replace('py-3', 'py-2');
-const smallTextAreaClasses = smallFormInputClasses + " leading-relaxed";
 
-
-const InputField = ({ id, label, value, onChange, placeholder, error, type = 'number' }: { id: string, label: string, value: string, onChange: (val: string) => void, placeholder: string, error?: string, type?: string }) => (
+const InputField: React.FC<{ id: string, label: string, value: string, onChange: (val: string) => void, placeholder: string, error?: string, type?: string, children?: React.ReactNode }> = ({ id, label, value, onChange, placeholder, error, type = 'number', children }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-slate-300">{label}</label>
-        <input
-            type={type}
-            id={id}
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={formInputClasses}
-            style={{ MozAppearance: 'textfield' }}
-        />
+        <div className="flex items-center gap-2">
+            <input
+                type={type}
+                id={id}
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                placeholder={placeholder}
+                className={formInputClasses}
+                style={{ MozAppearance: 'textfield' }}
+            />
+            {children}
+        </div>
         {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
 );
-
-const SaveCalculationForm: React.FC<{ onSave: (customerName: string, notes: string) => void, onCancel: () => void }> = ({ onSave, onCancel }) => {
-    const [customerName, setCustomerName] = useState('');
-    const [notes, setNotes] = useState('');
-
-    const handleSave = () => {
-        onSave(customerName.trim(), notes.trim());
-    };
-
-    return (
-        <div className="mt-6 p-4 bg-slate-700 border-t-2 border-slate-600 rounded-b-xl">
-            <h4 className="font-semibold text-slate-200 mb-4">Save Calculation</h4>
-            <div className="space-y-4">
-                 <div>
-                    <label htmlFor="saveCustomerName" className="block text-sm font-medium text-slate-300">Customer Name (Optional)</label>
-                    <input
-                        type="text"
-                        id="saveCustomerName"
-                        value={customerName}
-                        onChange={e => setCustomerName(e.target.value)}
-                        placeholder="Enter customer name"
-                        className={smallFormInputClasses}
-                    />
-                </div>
-                 <div>
-                    <label htmlFor="saveNotes" className="block text-sm font-medium text-slate-300">Notes (Optional)</label>
-                    <textarea 
-                        id="saveNotes" 
-                        value={notes} 
-                        onChange={e => setNotes(e.target.value)} 
-                        rows={3} 
-                        className={smallTextAreaClasses}
-                        placeholder="Add any details..."
-                    />
-                </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-                <button
-                    onClick={handleSave}
-                    className="w-full px-4 py-2 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 disabled:bg-primary-400/50 transition-colors"
-                >
-                    Save
-                </button>
-                <button
-                    onClick={onCancel}
-                    className="w-full px-4 py-2 bg-slate-500 text-slate-100 font-semibold rounded-lg hover:bg-slate-600 transition-colors"
-                >
-                    Cancel
-                </button>
-            </div>
-        </div>
-    );
-};
-
 
 const RateCalculator: React.FC = () => {
     const [weight, setWeight] = useState('');
@@ -164,263 +101,133 @@ const RateCalculator: React.FC = () => {
     );
 };
 
-
-const MaundCalculator: React.FC<{
-    onSave: (calculation: Omit<Calculation, 'id' | 'created_at'>) => void;
-    isEditMode: boolean;
-}> = ({ onSave, isEditMode }) => {
-    const [bags, setBags] = useState<{ id: number, weight: string }[]>([{ id: 1, weight: '' }]);
+const MultiWeightCalculator: React.FC = () => {
     const [pricePerMaund, setPricePerMaund] = useState('');
-    const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isSaving, setIsSaving] = useState(false);
-    
-    const handleBagWeightChange = (id: number, weight: string) => {
-        if (weight.startsWith('-')) return;
-        setBags(bags.map(bag => bag.id === id ? { ...bag, weight } : bag));
-        setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors[`bag-${id}`];
-            return newErrors;
-        });
-    };
-    
-    const handlePriceChange = (price: string) => {
-        if (price.startsWith('-')) return;
-        setPricePerMaund(price);
-        setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.price;
-            return newErrors;
-        });
-    }
+    const [currentWeight, setCurrentWeight] = useState('');
+    const [weights, setWeights] = useState<number[]>([]);
 
-    const addBag = () => {
-        setBags([...bags, { id: Date.now(), weight: '' }]);
+    const handleNumberChange = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
+        if (value.startsWith('-')) return;
+        setter(value);
     };
-    
-    const removeBag = (id: number) => {
-        setBags(bags.filter(bag => bag.id !== id));
+
+    const handleAddWeight = () => {
+        const numWeight = parseFloat(currentWeight);
+        if (!isNaN(numWeight) && numWeight > 0) {
+            setWeights(prev => [...prev, numWeight]);
+            setCurrentWeight('');
+        }
+    };
+
+    const handleRemoveWeight = (indexToRemove: number) => {
+        setWeights(prev => prev.filter((_, index) => index !== indexToRemove));
     };
 
     const calculation = useMemo(() => {
-        const totalKg = bags.reduce((sum, bag) => sum + (parseFloat(bag.weight) || 0), 0);
-        const totalMaunds = totalKg / 40;
-        const numPricePerMaund = parseFloat(pricePerMaund);
+        const numPricePerMaund = parseFloat(pricePerMaund) || 0;
+        const totalKg = weights.reduce((acc, w) => acc + w, 0);
 
-        if (totalKg > 0 && numPricePerMaund > 0) {
-            const rawPrice = totalMaunds * numPricePerMaund;
-            const totalPrice = Math.round((rawPrice + Number.EPSILON) * 100) / 100;
-            return { totalKg, totalMaunds, totalPrice };
+        if (totalKg === 0) {
+            return { totalKg: 0, totalPrice: 0, totalMaunds: 0, remainingKg: 0 };
         }
-        return { totalKg, totalMaunds, totalPrice: 0 };
-    }, [bags, pricePerMaund]);
-    
-    const handleReset = useCallback(() => {
-        setBags([{ id: 1, weight: '' }]);
-        setPricePerMaund('');
-        setErrors({});
-        setIsSaving(false);
-    }, []);
+        
+        const pricePerKg = numPricePerMaund > 0 ? numPricePerMaund / 40 : 0;
+        const totalPrice = totalKg * pricePerKg;
+        const totalMaunds = Math.floor(totalKg / 40);
+        const remainingKg = totalKg % 40;
 
-    const handleSave = (customerName: string, notes: string) => {
-        onSave({
-            customer_name: customerName,
-            total_kg: calculation.totalKg,
-            total_price: calculation.totalPrice,
-            bags: bags.map(b => ({ weight: parseFloat(b.weight) || 0 })),
-            notes: notes,
-            price_per_maund: parseFloat(pricePerMaund)
-        });
-        handleReset();
-    }
+        return {
+            totalKg,
+            totalPrice: Math.round((totalPrice + Number.EPSILON) * 100) / 100,
+            totalMaunds,
+            remainingKg: Math.round((remainingKg + Number.EPSILON) * 100) / 100
+        };
+    }, [pricePerMaund, weights]);
+
+    const handleReset = useCallback(() => {
+        setPricePerMaund('');
+        setCurrentWeight('');
+        setWeights([]);
+    }, []);
 
     return (
         <div className="bg-slate-800 p-6 md:p-8 rounded-xl shadow-2xl shadow-black/20 w-full border border-slate-700">
             <div className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-slate-300">Bag Weights (kg)</label>
-                    <div className="space-y-3 mt-1">
-                        {bags.map((bag, index) => (
-                            <div key={bag.id} className="flex items-center gap-2">
-                                <input
-                                    type="number"
-                                    value={bag.weight}
-                                    onChange={e => handleBagWeightChange(bag.id, e.target.value)}
-                                    placeholder={`Bag ${index + 1} weight`}
-                                    className={formInputClasses}
-                                />
-                                {bags.length > 1 && (
-                                    <button onClick={() => removeBag(bag.id)} className="p-3 bg-red-500/20 text-red-400 rounded-md hover:bg-red-500/30 transition-colors">
-                                        <DeleteIcon />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                     <button onClick={addBag} className="mt-3 text-sm font-semibold text-primary-400 hover:text-primary-300">
-                        + Add another bag
-                    </button>
-                </div>
-                 <InputField
+                <InputField
                     id="pricePerMaund"
                     label="Price per Maund (40kg)"
                     value={pricePerMaund}
-                    onChange={handlePriceChange}
+                    onChange={(v) => handleNumberChange(v, setPricePerMaund)}
                     placeholder="e.g., 3200"
-                    error={errors.price}
                 />
-            </div>
-            <div className="mt-8 pt-6 border-t-2 border-slate-700/80">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                <div>
+                    <label htmlFor="currentWeight" className="block text-sm font-medium text-slate-300">Enter Weight (kg)</label>
+                    <div className="mt-1 flex gap-2">
+                        <input
+                            type="number"
+                            id="currentWeight"
+                            value={currentWeight}
+                            onChange={e => handleNumberChange(e.target.value, setCurrentWeight)}
+                            onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); handleAddWeight(); }}}
+                            placeholder="e.g., 120"
+                            className={formInputClasses}
+                        />
+                        <button
+                            onClick={handleAddWeight}
+                            className="px-6 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 transition-colors disabled:bg-slate-500"
+                            disabled={!currentWeight}
+                            aria-label="Add weight to list"
+                        >
+                            Add
+                        </button>
+                    </div>
+                </div>
+
+                {weights.length > 0 && (
                     <div>
-                         <p className="text-sm font-medium text-slate-300">Total Weight</p>
-                         <p className="text-3xl font-bold text-slate-100 my-1">{calculation.totalKg.toFixed(2)} kg</p>
-                         <p className="text-sm text-slate-400">({calculation.totalMaunds.toFixed(3)} Maunds)</p>
+                        <h3 className="text-md font-semibold text-slate-200 mb-2">Weight Entries ({weights.length})</h3>
+                        <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                            {weights.map((w, i) => (
+                                <div key={i} className="flex justify-between items-center bg-slate-600 p-2 rounded-md animate-[fadeIn_0.2s_ease-out]">
+                                    <span className="text-slate-100">{i + 1}. <span className="font-mono">{w.toFixed(2)} kg</span></span>
+                                    <button onClick={() => handleRemoveWeight(i)} className="text-red-400 hover:text-red-300 p-1 rounded-full" aria-label={`Remove weight ${w} kg`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                     <div className="sm:border-l sm:border-slate-700">
-                         <p className="text-sm font-medium text-slate-300">Total Price</p>
-                         <p className="text-5xl font-bold text-primary-400 my-1 drop-shadow-glow">
-                            {formatCurrency(calculation.totalPrice)}
-                        </p>
-                    </div>
-                 </div>
+                )}
             </div>
-            
-             <div className="mt-8 flex gap-2">
+
+            <div className="mt-8 pt-6 border-t-2 border-slate-700/80">
+                <div className="text-center">
+                    <p className="text-sm font-medium text-slate-300">
+                        Total Weight: <span className="font-bold text-slate-100">{calculation.totalKg.toFixed(2)} kg</span>
+                    </p>
+                     <p className="text-lg font-semibold text-slate-100 mt-1">
+                        {calculation.totalMaunds} Maunds, {calculation.remainingKg.toFixed(2)} kg
+                    </p>
+                    <p className="text-5xl font-bold text-primary-400 my-2 drop-shadow-glow">
+                        {formatCurrency(calculation.totalPrice)}
+                    </p>
+                    <p className="text-sm font-medium text-slate-300">Total Price</p>
+                </div>
+            </div>
+            <div className="mt-8">
                 <button
                     onClick={handleReset}
                     className="w-full px-6 py-3 bg-slate-600 text-slate-100 font-semibold rounded-lg shadow-md hover:bg-slate-700 transition-colors"
                 >
-                    Reset
+                    Clear All
                 </button>
-                {isEditMode && (
-                    <button
-                        onClick={() => setIsSaving(true)}
-                        disabled={calculation.totalPrice <= 0 || isSaving}
-                        className="w-full px-6 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 disabled:bg-primary-400/50 transition-colors"
-                    >
-                        Save
-                    </button>
-                )}
-            </div>
-            
-            {isSaving && <SaveCalculationForm onSave={handleSave} onCancel={() => setIsSaving(false)} />}
-        </div>
-    );
-};
-
-
-const SavedCalculations: React.FC<{
-    calculations: Calculation[];
-    onDelete: (id: string) => void;
-    onEdit: (calculation: Calculation) => void;
-    isEditMode: boolean;
-}> = ({ calculations, onDelete, onEdit, isEditMode }) => {
-    if (calculations.length === 0) {
-        return (
-            <div className="text-center py-10 bg-slate-800 rounded-xl mt-8 border-2 border-dashed border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-300">No Saved Calculations</h3>
-                <p className="text-sm text-slate-400">Your saved calculations will appear here.</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="mt-10">
-            <h2 className="text-xl font-bold text-slate-200 mb-4">Saved Calculations</h2>
-            <div className="space-y-3">
-                {calculations.map(calc => (
-                    <div key={calc.id} className="bg-slate-800 p-4 rounded-lg shadow-md border border-slate-700">
-                        <div className="flex justify-between items-start">
-                           <div>
-                                <p className="font-semibold text-slate-100">{calc.customer_name || 'Unnamed Calculation'}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <CalendarIcon />
-                                    <span className="text-xs text-slate-400">{new Date(calc.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year:'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</span>
-                                </div>
-                           </div>
-                           <div className="flex items-center gap-2">
-                                {isEditMode && (
-                                    <button onClick={() => onDelete(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors">
-                                        <DeleteIcon />
-                                    </button>
-                                )}
-                           </div>
-                        </div>
-                         <div className="mt-3 pt-3 border-t border-slate-700">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm text-slate-300">{calc.total_kg.toFixed(2)} kg at {formatCurrency(calc.price_per_maund || 0)}/maund</p>
-                                    <p className="text-xs text-slate-400">{calc.bags.length} bags</p>
-                                </div>
-                                <p className="text-2xl font-bold text-primary-400">{formatCurrency(calc.total_price)}</p>
-                            </div>
-                            {calc.notes && (
-                                <div className="mt-2 p-2 text-sm bg-slate-700/50 rounded-md text-slate-300 italic">
-                                    "{calc.notes}"
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
             </div>
         </div>
     );
 };
-
 
 const CalculatorPage: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
-    const [calculatorType, setCalculatorType] = useState<CalculatorType>('maund');
-    const [savedCalculations, setSavedCalculations] = useState<Calculation[]>([]);
-    const { addNotification } = useNotifier();
-
-     useEffect(() => {
-        const loadFromCache = () => {
-            const saved = localStorage.getItem(CALC_CACHE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (Array.isArray(parsed)) {
-                        setSavedCalculations(parsed.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-                    }
-                } catch (e) { console.error("Failed to parse saved calculations", e); }
-            }
-        };
-        loadFromCache();
-    }, []);
-
-    const saveToCache = (calcs: Calculation[]) => {
-        localStorage.setItem(CALC_CACHE_KEY, JSON.stringify(calcs));
-    };
-
-    const handleSaveCalculation = (calculation: Omit<Calculation, 'id' | 'created_at'>) => {
-        const newCalculation: Calculation = {
-            ...calculation,
-            id: crypto.randomUUID(),
-            created_at: new Date().toISOString()
-        };
-        setSavedCalculations(prev => {
-            const newCalcs = [newCalculation, ...prev];
-            saveToCache(newCalcs);
-            return newCalcs;
-        });
-        addNotification('Calculation saved successfully!', 'success');
-    };
-
-    const handleDeleteCalculation = (id: string) => {
-        setSavedCalculations(prev => {
-            const newCalcs = prev.filter(c => c.id !== id);
-            saveToCache(newCalcs);
-            return newCalcs;
-        });
-        addNotification('Calculation deleted!', 'info');
-    };
-
-    const handleEditCalculation = (calculation: Calculation) => {
-        // Future implementation: pre-fill the form with calculation data
-        addNotification('Edit functionality coming soon!', 'info');
-    };
-
+    const [calculatorType, setCalculatorType] = useState<CalculatorType>('list');
 
     const ToggleButton: React.FC<{ label: string; type: CalculatorType; }> = ({ label, type }) => (
         <button
@@ -436,31 +243,22 @@ const CalculatorPage: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => {
     );
 
     return (
-        <div className="mt-4 max-w-4xl mx-auto pb-10">
+        <div className="mt-4 max-w-md mx-auto pb-10">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
                 <h2 className="text-2xl font-bold text-slate-200">Calculators</h2>
                  <div className="w-full md:w-auto grid grid-cols-2 gap-1 p-1 bg-slate-800 rounded-xl">
-                    <ToggleButton label="Maund to Price" type="maund" />
+                    <ToggleButton label="Weight List" type="list" />
                     <ToggleButton label="Rate Finder" type="rate" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3">
-                    {calculatorType === 'maund' ? (
-                        <MaundCalculator onSave={handleSaveCalculation} isEditMode={isEditMode} />
-                    ) : (
-                        <RateCalculator />
-                    )}
-                </div>
-                 <div className="lg:col-span-2">
-                    <SavedCalculations 
-                        calculations={savedCalculations} 
-                        onDelete={handleDeleteCalculation}
-                        onEdit={handleEditCalculation}
-                        isEditMode={isEditMode}
-                    />
-                </div>
+            <div className="animate-[fadeIn_0.3s_ease-out]">
+                <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                {calculatorType === 'list' ? (
+                    <MultiWeightCalculator />
+                ) : (
+                    <RateCalculator />
+                )}
             </div>
         </div>
     );
