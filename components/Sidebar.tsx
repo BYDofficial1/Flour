@@ -1,9 +1,12 @@
+
+
 import React, { Fragment } from 'react';
 import { ChartIcon } from './icons/ChartIcon';
 import { ListBulletIcon } from './icons/ListBulletIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
+import { BellIcon } from './icons/BellIcon';
 
 type Page = 'transactions' | 'dashboard' | 'calculator';
 
@@ -14,6 +17,9 @@ interface SidebarProps {
     setCurrentPage: (page: Page) => void;
     isEditMode: boolean;
     onToggleEditMode: () => void;
+    // Fix: The correct type for Notification.permission is NotificationPermission.
+    notificationPermission: NotificationPermission;
+    onRequestNotifications: () => void;
 }
 
 const NavItem: React.FC<{
@@ -38,12 +44,14 @@ const NavItem: React.FC<{
     </li>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage, isEditMode, onToggleEditMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage, isEditMode, onToggleEditMode, notificationPermission, onRequestNotifications }) => {
 
     const handleNavigation = (page: Page) => {
         setCurrentPage(page);
         setIsOpen(false);
     };
+
+    const isNotificationsEnabled = notificationPermission === 'granted';
 
     return (
         <Fragment>
@@ -107,7 +115,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
 
                 <div> {/* Bottom section */}
                      <ul className="space-y-2 border-t border-slate-600/50 pt-4">
-                         
+                         <li>
+                            <button
+                                onClick={onRequestNotifications}
+                                disabled={isNotificationsEnabled}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-slate-300 hover:bg-primary-500/20 hover:text-white disabled:opacity-70 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                            >
+                                <BellIcon isActive={isNotificationsEnabled} />
+                                <div className="flex flex-col">
+                                    <span className="text-base">Notifications</span>
+                                    <span className={`text-xs capitalize ${isNotificationsEnabled ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        {isNotificationsEnabled ? 'Enabled' : 'Click to Enable'}
+                                    </span>
+                                </div>
+                            </button>
+                         </li>
                     </ul>
                 </div>
 

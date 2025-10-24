@@ -1,11 +1,13 @@
+
 import React from 'react';
-import type { Transaction } from '../types';
+import type { Transaction, Reminder } from '../types';
 import { EditIcon } from './icons/EditIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
 import { formatCurrency } from '../utils/currency';
 import { DocumentPlusIcon } from './icons/DocumentPlusIcon';
 import { ClockIcon } from './icons/ClockIcon';
 import { ReceiptIcon } from './icons/ReceiptIcon';
+import { BellIcon } from './icons/BellIcon';
 
 interface TransactionListProps {
     transactions: Transaction[];
@@ -13,6 +15,8 @@ interface TransactionListProps {
     onDelete: (id: string) => void;
     unsyncedIds: Set<string>;
     isEditMode: boolean;
+    onSetReminder: (transaction: Transaction) => void;
+    reminders: Reminder[];
 }
 
 const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ status }) => {
@@ -25,7 +29,7 @@ const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ statu
     return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
 };
 
-const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, unsyncedIds, isEditMode }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit, onDelete, unsyncedIds, isEditMode, onSetReminder, reminders }) => {
     if (transactions.length === 0) {
         return (
             <div className="text-center py-16 px-6 bg-white rounded-lg shadow-md border-2 border-dashed border-slate-200">
@@ -39,7 +43,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
     // A more detailed and visually appealing card for mobile view
     const TransactionCard: React.FC<{ t: Transaction }> = ({ t }) => {
         const isUnsynced = unsyncedIds.has(t.id);
+        const hasReminder = reminders.some(r => r.transactionId === t.id);
         const balanceDue = t.total - (t.paidAmount || 0);
+        const canSetReminder = t.paymentStatus !== 'paid';
 
         return (
             <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-4 overflow-hidden border border-slate-200/80">
@@ -112,6 +118,11 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                 </div>
                  {isEditMode && (
                     <div className="bg-slate-50/70 px-4 py-2 flex justify-end items-center space-x-2">
+                        {canSetReminder && (
+                            <button onClick={() => onSetReminder(t)} className={`flex items-center gap-1.5 text-sm font-semibold py-1 px-3 rounded-md transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-600 hover:bg-slate-200'}`} aria-label="Set reminder">
+                                <BellIcon isActive={hasReminder}/> {hasReminder ? 'Reminder Set' : 'Remind'}
+                            </button>
+                        )}
                         <button onClick={() => onEdit(t)} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:text-blue-800 py-1 px-3 rounded-md hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
                             <EditIcon /> Edit
                         </button>
@@ -131,7 +142,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                 {transactions.map(t => <TransactionCard key={t.id} t={t} />)}
             </div>
 
-            {/* Desktop Table View - cleaner and more organized */}
+            {/* Desktop Table View */}
             <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden border border-slate-200/80">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-slate-500">
@@ -149,7 +160,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                         <tbody>
                             {transactions.map(t => {
                                 const isUnsynced = unsyncedIds.has(t.id);
+                                const hasReminder = reminders.some(r => r.transactionId === t.id);
                                 const balanceDue = t.total - (t.paidAmount || 0);
+                                const canSetReminder = t.paymentStatus !== 'paid';
+
                                 return (
                                 <React.Fragment key={t.id}>
                                     <tr className="bg-white border-b hover:bg-primary-50/50 transition-colors duration-200">
@@ -189,6 +203,11 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit,
                                         {isEditMode && (
                                             <td className="px-4 py-4 text-center align-top">
                                                 <div className="flex justify-center items-center space-x-1">
+                                                    {canSetReminder && (
+                                                        <button onClick={() => onSetReminder(t)} className={`p-2 rounded-full transition-colors ${hasReminder ? 'text-green-600 hover:bg-green-100' : 'text-slate-500 hover:bg-slate-100'}`} aria-label="Set reminder">
+                                                            <BellIcon isActive={hasReminder} />
+                                                        </button>
+                                                    )}
                                                     <button onClick={() => onEdit(t)} className="p-2 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
                                                         <EditIcon />
                                                     </button>

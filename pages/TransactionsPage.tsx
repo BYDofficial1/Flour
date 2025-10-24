@@ -1,5 +1,6 @@
+
 import React from 'react';
-import type { Transaction } from '../types';
+import type { Transaction, Reminder } from '../types';
 import type { TimeFilter } from '../App';
 import TransactionList from '../components/TransactionList';
 import { PlusIcon } from '../components/icons/PlusIcon';
@@ -61,6 +62,8 @@ interface TransactionsPageProps {
     setStatusFilter: (statuses: Transaction['paymentStatus'][]) => void;
     unsyncedIds: Set<string>;
     isEditMode: boolean;
+    onSetReminder: (transaction: Transaction) => void;
+    reminders: Reminder[];
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
@@ -75,7 +78,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     statusFilter, 
     setStatusFilter, 
     unsyncedIds, 
-    isEditMode 
+    isEditMode,
+    onSetReminder,
+    reminders,
 }) => {
 
     return (
@@ -129,6 +134,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onDelete={onDelete}
                 unsyncedIds={unsyncedIds}
                 isEditMode={isEditMode}
+                onSetReminder={onSetReminder}
+                reminders={reminders}
             />
         </div>
     );

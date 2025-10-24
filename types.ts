@@ -1,6 +1,7 @@
 
 
 
+
 export interface Transaction {
     id: string;
     customerName: string;
@@ -28,6 +29,13 @@ export interface Calculation {
     notes?: string;
     price_per_maund?: number;
 }
+
+export interface Reminder {
+    id: string;
+    transactionId: string;
+    remindAt: string;
+}
+
 
 // Fix: Define and export Theme and Settings types.
 export type Theme = 'amber' | 'blue' | 'green' | 'slate';

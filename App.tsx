@@ -1,5 +1,7 @@
+
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Transaction } from './types';
+import type { Transaction, Reminder } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
@@ -8,8 +10,11 @@ import CalculatorPage from './pages/CalculatorPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
+import ReminderModal from './components/ReminderModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
+import { playNotificationSound } from './utils/sound';
+
 
 export type Page = 'transactions' | 'dashboard' | 'calculator';
 export type TimeFilter = {
@@ -81,7 +86,7 @@ const App: React.FC = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const editModeTimeoutRef = useRef<number | null>(null);
 
-    // New states for online/offline sync
+    // Sync states
     const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
     const [unsyncedCount, setUnsyncedCount] = useState<number>(0);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -90,6 +95,12 @@ const App: React.FC = () => {
     const [unsyncedIds, setUnsyncedIds] = useState<Set<string>>(new Set());
     const [conflicts, setConflicts] = useState<{ local: Transaction, server: Transaction }[]>([]);
     const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>([]);
+
+    // Reminder and Notification states
+    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    const [reminders, setReminders] = useState<Reminder[]>([]);
+    const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [transactionForReminder, setTransactionForReminder] = useState<Transaction | null>(null);
 
     const checkUnsyncedChanges = useCallback(() => {
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
@@ -154,11 +165,71 @@ const App: React.FC = () => {
         loadInitialData();
         checkUnsyncedChanges();
 
+        // Load reminders from localStorage
+        const savedReminders = localStorage.getItem('reminders');
+        if (savedReminders) {
+            setReminders(JSON.parse(savedReminders));
+        }
+
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
     }, [loadInitialData, checkUnsyncedChanges]);
+
+    // Real-time Supabase subscription
+    useEffect(() => {
+        if (!isSupabaseConfigured) return;
+
+        const channel = supabase!.channel('public:transactions')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, payload => {
+            console.log('Real-time change received:', payload);
+            
+            const handleRealtimeUpdate = (txs: Transaction[]) => {
+                const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+                const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+
+                if (payload.eventType === 'INSERT') {
+                    const newTx = fromSupabase(payload.new);
+                    if (creates.some(t => t.id === newTx.id) || txs.some(t => t.id === newTx.id)) return txs;
+                    
+                    addNotification(`New transaction added from another device.`, 'info');
+                    return [newTx, ...txs];
+                }
+
+                if (payload.eventType === 'UPDATE') {
+                    const updatedTx = fromSupabase(payload.new);
+                    if (updates.some(t => t.id === updatedTx.id)) {
+                        addNotification(`Remote update for ${updatedTx.customerName} conflicts with your changes. Sync to resolve.`, 'error');
+                        return txs; 
+                    }
+                    addNotification(`Transaction for ${updatedTx.customerName} updated remotely.`, 'info');
+                    return txs.map(t => t.id === updatedTx.id ? updatedTx : t);
+                }
+
+                if (payload.eventType === 'DELETE') {
+                    const deletedId = payload.old.id;
+                    addNotification(`A transaction was deleted from another device.`, 'info');
+                    return txs.filter(t => t.id !== deletedId);
+                }
+
+                return txs;
+            };
+
+            setTransactions(currentTxs => {
+                const newTxs = handleRealtimeUpdate(currentTxs);
+                if (newTxs !== currentTxs) {
+                    localStorage.setItem('transactions', JSON.stringify(newTxs));
+                }
+                return newTxs;
+            });
+          })
+          .subscribe();
+
+        return () => {
+          supabase!.removeChannel(channel);
+        };
+    }, [isSupabaseConfigured, addNotification]);
     
     const handleSync = useCallback(async () => {
         if (!isOnline || isSyncing || !isSupabaseConfigured) return;
@@ -211,7 +282,7 @@ const App: React.FC = () => {
                     const localBaseUpdatedAt = localUpdate.updatedAt ? new Date(localUpdate.updatedAt).getTime() : 0;
 
                     if (!serverTx || serverUpdatedAt > localBaseUpdatedAt) {
-                        // CONFLICT! The server version is newer or was deleted.
+                        // CONFLICT!
                         const { data: serverFullTx, error: serverFullError } = await supabase!
                             .from('transactions')
                             .select('*')
@@ -221,13 +292,9 @@ const App: React.FC = () => {
                         if (serverFullError && serverFullError.code !== 'PGRST116') {
                              throw new Error(`Conflict data fetch failed for ${localUpdate.id}: ${serverFullError.message}`);
                         }
-                        // If serverFullTx is null, it means the record was deleted on the server.
-                        // We can treat this as a conflict where server version is "deleted".
                         if (serverFullTx) {
                             conflictsFound.push({ local: localUpdate, server: fromSupabase(serverFullTx) });
                         } else {
-                            // Handle case where item was deleted on server. For now, treat as a standard conflict.
-                            // We can enhance the modal later to show "Deleted on Server".
                              conflictsFound.push({ local: localUpdate, server: { ...localUpdate, customerName: `${localUpdate.customerName} (Deleted on Server)` } });
                         }
 
@@ -248,7 +315,7 @@ const App: React.FC = () => {
                 if (conflictsFound.length > 0) {
                     setConflicts(conflictsFound);
                     const conflictedIds = new Set(conflictsFound.map(c => c.local.id));
-                    const remainingUpdates = updates.filter(u => conflictedIds.has(u.id));
+                    const remainingUpdates = updates.filter(u => !conflictedIds.has(u.id));
                     setQueue(SYNC_QUEUES.UPDATES, remainingUpdates);
                     addNotification(`${conflictsFound.length} updates have conflicts. Please resolve them.`, 'error');
                 }
@@ -283,21 +350,101 @@ const App: React.FC = () => {
             addNotification(`Keeping server version for ${chosenVersion.customerName}. Your offline changes are discarded.`, 'success');
         }
         
-        // Clean up local state and queues for the resolved item
         const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
         setQueue(SYNC_QUEUES.UPDATES, updates.filter(t => t.id !== chosenVersion.id));
         setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
         
-        // Refresh local data to show the resolved state
         await loadInitialData();
     };
 
-    // Auto-sync when coming online with pending changes
     useEffect(() => {
         if (isOnline && unsyncedCount > 0 && !isSyncing) {
             handleSync();
         }
     }, [isOnline, unsyncedCount, isSyncing, handleSync]);
+
+    // Reminder and notification permission logic
+    const requestNotificationPermission = async () => {
+        if (!('Notification' in window)) {
+            addNotification('This browser does not support desktop notifications.', 'error');
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === 'granted') {
+            addNotification('Notifications enabled!', 'success');
+             new Notification('Chakki Hisab Notifications', {
+                body: 'You will now receive reminders and alerts.',
+            });
+        } else {
+            addNotification('Notifications were not enabled. You can change this in your browser settings.', 'info');
+        }
+    };
+    
+    // Periodically check permission status in case user changes it in browser settings
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (Notification.permission !== notificationPermission) {
+                setNotificationPermission(Notification.permission);
+            }
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [notificationPermission]);
+
+    // Save reminders to localStorage
+    useEffect(() => {
+        localStorage.setItem('reminders', JSON.stringify(reminders));
+    }, [reminders]);
+
+    // Check for due reminders every minute
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const dueReminders = reminders.filter(r => new Date(r.remindAt) <= now);
+
+            if (dueReminders.length > 0) {
+                dueReminders.forEach(reminder => {
+                    const transaction = transactions.find(t => t.id === reminder.transactionId);
+                    if (transaction) {
+                        const notificationBody = `Reminder for ${transaction.customerName}'s transaction of ${transaction.total} Rs.`;
+                        if (notificationPermission === 'granted') {
+                            new Notification('Transaction Reminder', {
+                                body: notificationBody,
+                                tag: transaction.id, // Avoid duplicate notifications for the same transaction
+                            });
+                        } else {
+                            // Fallback to an in-app toast notification if permission isn't granted
+                            addNotification(notificationBody, 'info');
+                        }
+                        playNotificationSound();
+                    }
+                });
+                
+                // Remove all due reminders at once to avoid multiple re-renders in a loop
+                const dueReminderIds = new Set(dueReminders.map(r => r.id));
+                setReminders(prev => prev.filter(r => !dueReminderIds.has(r.id)));
+            }
+        }, 60000); // Check every minute
+        
+        return () => clearInterval(interval);
+    }, [reminders, transactions, notificationPermission, addNotification]);
+
+    const handleOpenReminderModal = (transaction: Transaction) => {
+        setTransactionForReminder(transaction);
+        setIsReminderModalOpen(true);
+    };
+
+    const handleSetReminder = (transactionId: string, remindAt: Date) => {
+        const newReminder: Reminder = {
+            id: crypto.randomUUID(),
+            transactionId,
+            remindAt: remindAt.toISOString(),
+        };
+        // Remove any existing reminder for this transaction before adding a new one
+        setReminders(prev => [...prev.filter(r => r.transactionId !== transactionId), newReminder]);
+        addNotification('Reminder set successfully!', 'success');
+        setIsReminderModalOpen(false);
+    };
     
     const resetEditModeTimer = useCallback(() => {
         if (editModeTimeoutRef.current) {
@@ -394,7 +541,7 @@ const App: React.FC = () => {
         setTransactions(newTransactions);
         localStorage.setItem('transactions', JSON.stringify(newTransactions));
         setIsModalOpen(false);
-        addNotification('Transaction added successfully!', 'success');
+        addNotification(`Transaction for ${transaction.customerName} added!`, 'success');
 
         if (isOnline && isSupabaseConfigured) {
             try {
@@ -421,7 +568,7 @@ const App: React.FC = () => {
         localStorage.setItem('transactions', JSON.stringify(newTransactions));
         setEditingTransaction(null);
         setIsModalOpen(false);
-        addNotification('Transaction updated successfully!', 'success');
+        addNotification(`Transaction for ${updatedTransaction.customerName} updated!`, 'success');
 
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
         const isUnsyncedCreate = creates.some(t => t.id === updatedTransaction.id);
@@ -465,10 +612,11 @@ const App: React.FC = () => {
         if (!deletingTransactionId) return;
         
         const idToDelete = deletingTransactionId;
+        const transactionToDelete = transactions.find(t => t.id === idToDelete);
         const newTransactions = transactions.filter(t => t.id !== idToDelete);
         setTransactions(newTransactions);
         localStorage.setItem('transactions', JSON.stringify(newTransactions));
-        addNotification('Transaction deleted!', 'success');
+        addNotification(`Transaction for ${transactionToDelete?.customerName || '...'} deleted!`, 'success');
         
         const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
         const isUnsyncedCreate = creates.some(t => t.id === idToDelete);
@@ -532,6 +680,8 @@ const App: React.FC = () => {
                 setCurrentPage={setCurrentPage}
                 isEditMode={isEditMode}
                 onToggleEditMode={toggleEditMode}
+                notificationPermission={notificationPermission}
+                onRequestNotifications={requestNotificationPermission}
             />
             <div className="flex-1 lg:pl-64">
                 <Header 
@@ -563,6 +713,8 @@ const App: React.FC = () => {
                                     setStatusFilter={setStatusFilter}
                                     unsyncedIds={unsyncedIds}
                                     isEditMode={isEditMode}
+                                    onSetReminder={handleOpenReminderModal}
+                                    reminders={reminders}
                                 />
                             )}
                             {currentPage === 'dashboard' && (
@@ -598,6 +750,12 @@ const App: React.FC = () => {
                 isOpen={conflicts.length > 0}
                 conflicts={conflicts}
                 onResolve={handleResolveConflict}
+            />
+            <ReminderModal
+                isOpen={isReminderModalOpen}
+                onClose={() => setIsReminderModalOpen(false)}
+                onSetReminder={handleSetReminder}
+                transaction={transactionForReminder}
             />
         </div>
     );
