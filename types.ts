@@ -20,13 +20,14 @@ export interface Transaction {
 
 export interface Calculation {
     id: string;
-    customer_name: string;
-    total_kg: number;
-    total_price: number;
+    customerName: string;
+    totalKg: number;
+    totalPrice: number;
     bags: { weight: number }[];
-    created_at: string;
+    createdAt: string;
     notes?: string;
-    price_per_maund?: number;
+    pricePerMaund?: number;
+    updatedAt?: string;
 }
 
 export interface Reminder {
