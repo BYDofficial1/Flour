@@ -12,22 +12,25 @@ interface DashboardPageProps {
     transactions: Transaction[];
     timeFilter: TimeFilter;
     setTimeFilter: (filter: TimeFilter) => void;
+    isEditMode: boolean;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, timeFilter, setTimeFilter }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, timeFilter, setTimeFilter, isEditMode }) => {
     return (
         <div className="space-y-8 mt-4">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                  <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-bold text-slate-700">Dashboard</h2>
-                    <button
-                        onClick={() => exportTransactionsToTxt(transactions)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-600 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-transform transform hover:scale-105"
-                        aria-label="Export dashboard transactions as a text file"
-                    >
-                        <ExportIcon />
-                        <span>Export TXT</span>
-                    </button>
+                    {isEditMode && (
+                        <button
+                            onClick={() => exportTransactionsToTxt(transactions)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-600 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-transform transform hover:scale-105"
+                            aria-label="Export dashboard transactions as a text file"
+                        >
+                            <ExportIcon />
+                            <span>Export TXT</span>
+                        </button>
+                    )}
                  </div>
                  <TimeFilterControls timeFilter={timeFilter} setTimeFilter={setTimeFilter} />
             </div>

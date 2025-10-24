@@ -15,7 +15,7 @@ import ConflictResolutionModal from './components/ConflictResolutionModal';
 import ReminderModal from './components/ReminderModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
-import { speak } from './utils/speech';
+import { playNotificationSound } from './utils/sound';
 import { formatCurrency } from './utils/currency';
 
 
@@ -498,24 +498,32 @@ const App: React.FC = () => {
                     if (transaction && transaction.paymentStatus !== 'paid') {
                         const balanceDue = transaction.total - (transaction.paidAmount || 0);
                         const notificationBody = `Reminder: ${transaction.customerName} has an outstanding balance of ${formatCurrency(balanceDue)}.`;
-                        const speechMessage = `Reminder for ${transaction.customerName}. Amount due is ${balanceDue} rupees.`;
                         
-                        if (notificationPermission === 'granted') {
-                            new Notification('Transaction Reminder', {
-                                body: notificationBody,
-                                tag: transaction.id, // Avoid duplicate notifications for the same transaction
-                            });
-                        } else {
-                            // Fallback to an in-app toast notification if permission isn't granted
-                            addNotification(notificationBody, 'info');
-                        }
-                        if (settings.soundEnabled) {
-                            speak(speechMessage);
-                        }
+                        const triggerNotification = (attempt: number) => {
+                            if (notificationPermission === 'granted') {
+                                // Fix: Removed 'renotify' as it's not a standard NotificationOption property.
+                                new Notification('Transaction Reminder', {
+                                    body: notificationBody,
+                                    tag: `${transaction.id}-${attempt}`, // Unique tag for each attempt
+                                    vibrate: [200, 100, 200], // Vibrate pattern for mobile
+                                });
+                            } else {
+                                addNotification(notificationBody, 'info');
+                            }
+
+                            if (settings.soundEnabled) {
+                                playNotificationSound();
+                            }
+                        };
+
+                        // Trigger the notification immediately
+                        triggerNotification(1);
+                        // Schedule the second notification after 30 seconds
+                        setTimeout(() => triggerNotification(2), 30000);
                     }
                 });
                 
-                // Remove all due reminders at once to avoid multiple re-renders in a loop
+                // Remove all processed reminders
                 const dueReminderIds = new Set(dueReminders.map(r => r.id));
                 setReminders(prev => prev.filter(r => !dueReminderIds.has(r.id)));
             }
@@ -523,6 +531,7 @@ const App: React.FC = () => {
         
         return () => clearInterval(interval);
     }, [reminders, transactions, notificationPermission, addNotification, settings.soundEnabled]);
+
 
     const handleOpenReminderModal = (transaction: Transaction) => {
         setTransactionForReminder(transaction);
@@ -903,6 +912,7 @@ const App: React.FC = () => {
                                     transactions={dateFilteredTransactions}
                                     timeFilter={timeFilter}
                                     setTimeFilter={setTimeFilter}
+                                    isEditMode={isEditMode}
                                 />
                             )}
                             {currentPage === 'calculator' && (

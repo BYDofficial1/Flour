@@ -359,8 +359,9 @@ const MaundCalculator: React.FC<{ addCalculation: (calc: Omit<Calculation, 'id' 
                 </button>
                 <button
                     onClick={() => setIsSaving(true)}
-                    disabled={!calculation.isValid || isSaving}
-                    className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:bg-primary-400/50 transition-colors"
+                    disabled={!calculation.isValid || isSaving || !isEditMode}
+                    title={!isEditMode ? "Enable Edit Mode to save" : "Save Calculation"}
+                    className="w-full px-4 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:bg-primary-400/50 disabled:cursor-not-allowed transition-colors"
                 >
                     Save Calculation
                 </button>

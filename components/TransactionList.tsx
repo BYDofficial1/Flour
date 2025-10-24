@@ -77,7 +77,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
         const reminderStatus = reminder ? getReminderStatus(reminder.remindAt) : undefined;
         const balanceDue = t.total - (t.paidAmount || 0);
         const canSetReminder = t.paymentStatus !== 'paid';
-        const showActions = isEditMode || canSetReminder;
         const reminderTooltip = reminder ? `Reminder set for: ${new Date(reminder.remindAt).toLocaleString()}` : 'Set a reminder for this transaction';
 
         return (
@@ -159,23 +158,19 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         </div>
                     )}
                 </div>
-                 {showActions && (
+                 {isEditMode && (
                     <div className="bg-slate-50/70 px-4 py-2 flex justify-end items-center space-x-2">
                         {canSetReminder && (
                             <button onClick={() => onSetReminder(t)} title={reminderTooltip} className={`flex items-center gap-1.5 text-sm font-semibold py-1 px-3 rounded-md transition-colors ${!!reminder ? 'text-slate-800 hover:bg-slate-200' : 'text-slate-600 hover:bg-slate-200'}`} aria-label="Set reminder">
                                 <BellIcon isActive={!!reminder} status={reminderStatus} /> {!!reminder ? 'Reminder Set' : 'Remind'}
                             </button>
                         )}
-                        {isEditMode && (
-                            <>
-                                <button onClick={() => onEdit(t)} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:text-blue-800 py-1 px-3 rounded-md hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
-                                    <EditIcon /> Edit
-                                </button>
-                                <button onClick={() => onDelete(t.id)} className="flex items-center gap-1.5 text-sm text-red-600 font-semibold hover:text-red-800 py-1 px-3 rounded-md hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
-                                    <DeleteIcon /> Delete
-                                </button>
-                            </>
-                        )}
+                        <button onClick={() => onEdit(t)} className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:text-blue-800 py-1 px-3 rounded-md hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
+                            <EditIcon /> Edit
+                        </button>
+                        <button onClick={() => onDelete(t.id)} className="flex items-center gap-1.5 text-sm text-red-600 font-semibold hover:text-red-800 py-1 px-3 rounded-md hover:bg-red-100 transition-colors" aria-label={`Delete transaction for ${t.customerName}`}>
+                            <DeleteIcon /> Delete
+                        </button>
                     </div>
                 )}
             </div>
@@ -272,13 +267,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                         <td className="px-4 py-4 whitespace-nowrap align-top text-slate-600">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</td>
                                         <td className="px-4 py-4 text-center align-top">
                                             <div className="flex justify-center items-center space-x-1">
-                                                {canSetReminder && !isEditMode && (
-                                                    <button onClick={() => onSetReminder(t)} title={reminderTooltip} className={`p-2 rounded-full transition-colors text-slate-500 hover:bg-slate-100`} aria-label="Set reminder">
-                                                        <BellIcon isActive={!!reminder} status={reminderStatus} />
-                                                    </button>
-                                                )}
                                                 {isEditMode && (
                                                     <>
+                                                        {canSetReminder && (
+                                                            <button onClick={() => onSetReminder(t)} title={reminderTooltip} className={`p-2 rounded-full transition-colors text-slate-500 hover:bg-slate-100`} aria-label="Set reminder">
+                                                                <BellIcon isActive={!!reminder} status={reminderStatus} />
+                                                            </button>
+                                                        )}
                                                         <button onClick={() => onEdit(t)} className="p-2 text-blue-600 rounded-full hover:bg-blue-100 transition-colors" aria-label={`Edit transaction for ${t.customerName}`}>
                                                             <EditIcon />
                                                         </button>

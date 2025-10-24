@@ -14,6 +14,7 @@ const CACHE_FILES = [
     '/utils/currency.ts',
     '/utils/export.ts',
     '/utils/speech.ts',
+    '/utils/sound.ts',
     '/utils/supabase.ts',
 
     // Pages
