@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Transaction, Reminder } from '../types';
 import { EditIcon } from './icons/EditIcon';
@@ -69,8 +70,17 @@ const TransactionCard: React.FC<{
     const canSetReminder = t.paymentStatus !== 'paid';
     const isGrindingService = GRINDING_SERVICES.includes(t.item);
 
+    const statusBorderStyles: Record<Transaction['paymentStatus'], string> = {
+        paid: 'border-l-green-500',
+        unpaid: 'border-l-red-500',
+        partial: 'border-l-yellow-500',
+    };
+    const borderStyle = isSelected
+        ? 'border-primary-500 ring-2 ring-primary-500/50'
+        : `border-slate-700 ${statusBorderStyles[t.paymentStatus]}`;
+
     return (
-        <div className={`bg-slate-800 rounded-xl shadow-lg hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 mb-4 overflow-hidden border ${isSelected ? 'border-primary-500 ring-2 ring-primary-500/50' : 'border-slate-700'}`}>
+        <div className={`bg-slate-800 rounded-xl shadow-lg hover:shadow-2xl hover:shadow-black/20 transition-all duration-300 mb-4 overflow-hidden border border-l-4 ${borderStyle}`}>
             <div className="p-5">
                  <div className="flex justify-between items-start gap-4">
                     <div className="flex items-start gap-4 flex-1">

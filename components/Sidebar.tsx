@@ -1,3 +1,4 @@
+
 import React, { Fragment } from 'react';
 import { ChartIcon } from './icons/ChartIcon';
 import { ListBulletIcon } from './icons/ListBulletIcon';
@@ -6,9 +7,8 @@ import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
 import { CogIcon } from './icons/CogIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
-import { UserIcon } from './icons/UserIcon';
 
-type Page = 'transactions' | 'dashboard' | 'customers' | 'calculator' | 'settings' | 'reports';
+type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -96,12 +96,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                                 icon={<ListBulletIcon />}
                                 isActive={currentPage === 'transactions'}
                                 onClick={() => handleNavigation('transactions')}
-                            />
-                             <NavItem
-                                label="Customers"
-                                icon={<UserIcon />}
-                                isActive={currentPage === 'customers'}
-                                onClick={() => handleNavigation('customers')}
                             />
                              <NavItem
                                 label="Reports"

@@ -19,7 +19,6 @@ const CACHE_FILES = [
 
     // Pages
     '/pages/CalculatorPage.tsx',
-    '/pages/CustomersPage.tsx',
     '/pages/DashboardPage.tsx',
     '/pages/SettingsPage.tsx',
     '/pages/ReportsPage.tsx',
@@ -71,7 +70,6 @@ const CACHE_FILES = [
     '/components/icons/SortIcon.tsx',
     '/components/icons/SyncIcon.tsx',
     '/components/icons/TrendingUpIcon.tsx',
-    '/components/icons/UserIcon.tsx',
     '/components/icons/WarningIcon.tsx',
     '/components/icons/WeightIcon.tsx',
     '/components/icons/WheatIcon.tsx',

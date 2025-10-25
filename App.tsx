@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction, Reminder, Settings, Theme, Calculation } from './types';
 import Header from './components/Header';
@@ -8,7 +9,6 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
-import CustomersPage from './pages/CustomersPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
@@ -17,7 +17,7 @@ import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
 import { playNotificationSound } from './utils/sound';
 
-export type Page = 'transactions' | 'dashboard' | 'customers' | 'calculator' | 'settings' | 'reports';
+export type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -180,7 +180,7 @@ const App: React.FC = () => {
     const syncLock = useRef(false);
     const [queueVersion, setQueueVersion] = useState(0); // Used to trigger re-renders for unsyncedCount
 
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'today' });
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>(['paid', 'unpaid', 'partial']);
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
@@ -584,8 +584,6 @@ const App: React.FC = () => {
                             sortConfig={sortConfig}
                             setSortConfig={setSortConfig}
                          />;
-            case 'customers':
-                return <CustomersPage transactions={transactions} />;
             case 'reports':
                 return <ReportsPage transactions={transactions} />;
             case 'calculator':

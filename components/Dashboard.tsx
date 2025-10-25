@@ -14,7 +14,7 @@ interface DashboardProps {
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode; iconBgClass?: string; }> = ({ title, value, icon, iconBgClass }) => (
-    <div className="bg-slate-800 p-6 rounded-2xl shadow-2xl shadow-black/20 hover:-translate-y-1 transition-all duration-300 ease-in-out flex items-center space-x-4 border border-slate-700">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-2xl shadow-black/20 hover:-translate-y-1 transition-all duration-300 ease-in-out flex items-center space-x-4 border border-slate-700">
         <div className={`p-4 rounded-lg ${iconBgClass || 'bg-primary-500/10'}`}>
             {icon}
         </div>
