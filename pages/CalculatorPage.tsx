@@ -95,12 +95,13 @@ const RateCalculator: React.FC = () => {
 
 interface MultiWeightCalculatorProps {
     calculations: Calculation[];
-    onAddCalculation: (calc: Omit<Calculation, 'id' | 'createdAt' | 'updatedAt'>) => void;
+    onAddCalculation: (calc: Omit<Calculation, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
     onUpdateCalculation: (calc: Calculation) => void;
     onDeleteCalculation: (id: string) => void;
+    isEditMode: boolean;
 }
 
-const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculations, onAddCalculation, onUpdateCalculation, onDeleteCalculation }) => {
+const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculations, onAddCalculation, onUpdateCalculation, onDeleteCalculation, isEditMode }) => {
     const [pricePerMaund, setPricePerMaund] = useState('');
     const [currentWeight, setCurrentWeight] = useState('');
     const [weights, setWeights] = useState<number[]>([]);
@@ -167,23 +168,23 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
             // Update
             const updatedCalc: Calculation = {
                 ...editingCalculation,
-                customerName,
-                totalKg: calculation.totalKg,
-                totalPrice: calculation.totalPrice,
+                customer_name: customerName,
+                total_kg: calculation.totalKg,
+                total_price: calculation.totalPrice,
                 bags: weights.map(w => ({ weight: w })),
                 notes: notes,
-                pricePerMaund: parseFloat(pricePerMaund) || 0,
+                price_per_maund: parseFloat(pricePerMaund) || 0,
             };
             onUpdateCalculation(updatedCalc);
         } else {
             // Create
             const newCalc = {
-                customerName: customerName.trim() ? customerName.trim() : undefined,
-                totalKg: calculation.totalKg,
-                totalPrice: calculation.totalPrice,
+                customer_name: customerName.trim() ? customerName.trim() : undefined,
+                total_kg: calculation.totalKg,
+                total_price: calculation.totalPrice,
                 bags: weights.map(w => ({ weight: w })),
                 notes: notes,
-                pricePerMaund: parseFloat(pricePerMaund) || 0,
+                price_per_maund: parseFloat(pricePerMaund) || 0,
             };
             onAddCalculation(newCalc);
         }
@@ -192,9 +193,9 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
     
     const handleEditClick = (calc: Calculation) => {
         setEditingCalculation(calc);
-        setCustomerName(calc.customerName || '');
+        setCustomerName(calc.customer_name || '');
         setNotes(calc.notes || '');
-        setPricePerMaund(calc.pricePerMaund?.toString() || '');
+        setPricePerMaund(calc.price_per_maund?.toString() || '');
         setWeights(calc.bags.map(b => b.weight));
         formRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -293,7 +294,7 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                     </button>
                     <button
                         onClick={handleSaveOrUpdate}
-                        disabled={weights.length === 0}
+                        disabled={weights.length === 0 || !isEditMode}
                         className="w-full px-6 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 transition-colors disabled:bg-slate-500/50 disabled:cursor-not-allowed"
                     >
                         {editingCalculation ? 'Update Calculation' : 'Save Calculation'}
@@ -309,14 +310,14 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                             <div key={calc.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 animate-[fadeIn_0.3s_ease-out]">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="font-bold text-slate-100 text-lg">{calc.customerName || 'Unnamed Calculation'}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{new Date(calc.createdAt).toLocaleString()}</p>
+                                        <p className="font-bold text-slate-100 text-lg">{calc.customer_name || 'Unnamed Calculation'}</p>
+                                        <p className="text-xs text-slate-400 mt-1">{new Date(calc.created_at).toLocaleString()}</p>
                                     </div>
                                      <div className="flex items-center gap-1">
-                                        <button onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors" aria-label={`Edit calculation for ${calc.customerName || 'Unnamed'}`}>
+                                        <button disabled={!isEditMode} onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Edit calculation for ${calc.customer_name || 'Unnamed'}`}>
                                             <EditIcon />
                                         </button>
-                                        <button onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors" aria-label={`Delete calculation for ${calc.customerName || 'Unnamed'}`}>
+                                        <button disabled={!isEditMode} onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Delete calculation for ${calc.customer_name || 'Unnamed'}`}>
                                             <DeleteIcon />
                                         </button>
                                     </div>
@@ -332,11 +333,11 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                                 <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-4 text-center">
                                     <div>
                                         <p className="text-xs text-slate-400">Total Weight</p>
-                                        <p className="font-semibold text-slate-200">{calc.totalKg.toFixed(2)} kg</p>
+                                        <p className="font-semibold text-slate-200">{calc.total_kg.toFixed(2)} kg</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-slate-400">Total Price</p>
-                                        <p className="font-bold text-primary-400 text-lg">{formatCurrency(calc.totalPrice)}</p>
+                                        <p className="font-bold text-primary-400 text-lg">{formatCurrency(calc.total_price)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -349,11 +350,11 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
 };
 
 interface CalculatorPageProps {
-    isEditMode: boolean;
     calculations: Calculation[];
-    onAddCalculation: (calc: Omit<Calculation, 'id' | 'createdAt' | 'updatedAt'>) => void;
+    onAddCalculation: (calc: Omit<Calculation, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => void;
     onUpdateCalculation: (calc: Calculation) => void;
     onDeleteCalculation: (id: string) => void;
+    isEditMode: boolean;
 }
 
 const CalculatorPage: React.FC<CalculatorPageProps> = ({ isEditMode, ...rest }) => {
@@ -373,7 +374,7 @@ const CalculatorPage: React.FC<CalculatorPageProps> = ({ isEditMode, ...rest }) 
     );
 
     return (
-        <div className="mt-4 max-w-lg mx-auto pb-10 px-4">
+        <div className="mt-4 max-w-2xl mx-auto pb-10 px-4">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
                 <h2 className="text-2xl font-bold text-slate-200">Calculators</h2>
                  <div className="w-full md:w-auto grid grid-cols-2 gap-1 p-1 bg-slate-800 rounded-xl border border-slate-700">
@@ -385,7 +386,7 @@ const CalculatorPage: React.FC<CalculatorPageProps> = ({ isEditMode, ...rest }) 
             <div className="animate-[fadeIn_0.3s_ease-out]">
                 <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                 {calculatorType === 'list' ? (
-                    <MultiWeightCalculator {...rest} />
+                    <MultiWeightCalculator {...rest} isEditMode={isEditMode} />
                 ) : (
                     <RateCalculator />
                 )}

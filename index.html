@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atta Chakki Hisab</title>
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12c0-2.5-2.5-6-2.5-6s-2.5 3.5-2.5 6c0 2.2-1.8 4-4 4s-4-1.8-4-4c0-2.5-2.5-6-2.5-6S4 9.5 4 12c0 4.4 3.6 8 8 8s8-3.6 8-8z" /><path d="M12 2v2" /><path d="M11 2.5a.5.5 0 0 1 1 0V4a.5.5 0 0 1-1 0z" /><path d="M13 2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0z" /><path d="M14 4.5s-1-1.5-1-3.5" /><path d="M10 4.5s1-1.5 1-3.5" /></svg>'>
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -173,10 +174,62 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
     }
+    @keyframes toast-in {
+        from {
+            transform: translateX(100%) scale(0.9);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0) scale(1);
+            opacity: 1;
+        }
+    }
+    @keyframes toast-out {
+        from {
+            transform: translateX(0) scale(1);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%) scale(0.9);
+            opacity: 0;
+        }
+    }
     @keyframes progress-bar {
         from { width: 100%; }
         to { width: 0%; }
     }
+    
+    /* --- Edit Mode Indicator Styles --- */
+    #edit-mode-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background-color: rgb(var(--color-primary-500) / 0.1);
+        color: rgb(var(--color-primary-400));
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 1px solid rgb(var(--color-primary-500) / 0.3);
+        animation: fadeIn 0.3s ease-out;
+    }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background-color: rgb(var(--color-primary-400));
+        border-radius: 50%;
+        animation: pulse 1.5s infinite ease-in-out;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+
     /* Custom scrollbar override */
     .no-scrollbar::-webkit-scrollbar {
         display: none;

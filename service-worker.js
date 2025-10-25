@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'atta-chakki-hisab-v13'; // Bumped version to invalidate old cache
+const CACHE_NAME = 'atta-chakki-hisab-v16'; // Bumped version for new auth flow
 const CACHE_FILES = [
     // Core
     '/',
@@ -8,14 +7,17 @@ const CACHE_FILES = [
     '/App.tsx',
     '/types.ts',
     
+    // Auth
+    '/utils/supabase.ts',
+    
     // Context
     '/context/NotificationContext.tsx',
 
     // Utils
     '/utils/currency.ts',
+    '/utils/error.ts',
     '/utils/export.ts',
     '/utils/sound.ts',
-    '/utils/supabase.ts',
 
     // Pages
     '/pages/CalculatorPage.tsx',
@@ -28,7 +30,6 @@ const CACHE_FILES = [
     '/components/BulkActionBar.tsx',
     '/components/ChangeStatusModal.tsx',
     '/components/ConfirmationModal.tsx',
-    '/components/ConflictResolutionModal.tsx',
     '/components/DailySales.tsx',
     '/components/Dashboard.tsx',
     '/components/Header.tsx',
@@ -42,14 +43,15 @@ const CACHE_FILES = [
     '/components/TransactionList.tsx',
 
     // Icons
-    '/components/icons/ArrowRightLeftIcon.tsx',
     '/components/icons/ArrowsUpDownIcon.tsx',
     '/components/icons/BellIcon.tsx',
     '/components/icons/CalendarIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',
+    '/components/icons/CameraIcon.tsx',
     '/components/icons/ChartIcon.tsx',
     '/components/icons/ChartPieIcon.tsx',
     '/components/icons/CheckCircleIcon.tsx',
+    '/components/icons/ChevronDownIcon.tsx',
     '/components/icons/ClockIcon.tsx',
     '/components/icons/CloseIcon.tsx',
     '/components/icons/CogIcon.tsx',
@@ -62,6 +64,7 @@ const CACHE_FILES = [
     '/components/icons/ExportIcon.tsx',
     '/components/icons/InformationCircleIcon.tsx',
     '/components/icons/ListBulletIcon.tsx',
+    '/components/icons/LogoutIcon.tsx',
     '/components/icons/MenuIcon.tsx',
     '/components/icons/PlusIcon.tsx',
     '/components/icons/ReceiptIcon.tsx',
@@ -86,13 +89,11 @@ const CACHE_FILES = [
     'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js',
 ];
 
-// Install the service worker and cache assets
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Opened cache');
-                // Use addAll with a catch to prevent a single failed asset from breaking the entire cache
                 return cache.addAll(CACHE_FILES).catch(error => {
                     console.error('Failed to cache one or more files:', error);
                 });
@@ -100,7 +101,6 @@ self.addEventListener('install', event => {
     );
 });
 
-// Activate event: clean up old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -117,9 +117,8 @@ self.addEventListener('activate', event => {
     return self.clients.claim();
 });
 
-// Fetch event: serve assets from cache or network
 self.addEventListener('fetch', event => {
-     // For navigation requests, always try network first, then fallback to cache (Network-first strategy)
+    // For navigation requests, use a network-first strategy.
     if (event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request).catch(() => caches.match('/index.html'))
@@ -127,36 +126,27 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // For other requests, use Cache-first strategy
+    // For other requests (CSS, JS, images), use a cache-first strategy.
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                // Cache hit - return response
                 if (response) {
                     return response;
                 }
-
-                // Not in cache - fetch from network
                 return fetch(event.request).then(
                     networkResponse => {
-                        // Check if we received a valid response
                         if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type !== 'basic' && networkResponse.type !== 'cors')) {
                             return networkResponse;
                         }
-                        
                         const responseToCache = networkResponse.clone();
-
                         caches.open(CACHE_NAME)
                             .then(cache => {
                                 cache.put(event.request, responseToCache);
                             });
-
                         return networkResponse;
                     }
                 ).catch(error => {
-                    // Network fetch failed. For specific asset types, you could return a fallback.
                     console.error('Fetch failed; returning offline fallback if available.', event.request.url, error);
-                    // e.g., return a fallback image: if (event.request.destination === 'image') return caches.match('/fallback-image.png');
                 });
             })
     );

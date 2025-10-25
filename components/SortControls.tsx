@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { SortKey } from '../App';
 import { ArrowsUpDownIcon } from './icons/ArrowsUpDownIcon';
+import { ChevronDownIcon } from './icons/ChevronDownIcon';
 
 type SortConfig = { key: SortKey; direction: 'ascending' | 'descending' };
 
@@ -13,10 +13,10 @@ interface SortControlsProps {
 const SORT_OPTIONS: { label: string; config: SortConfig }[] = [
     { label: 'Newest First', config: { key: 'date', direction: 'descending' } },
     { label: 'Oldest First', config: { key: 'date', direction: 'ascending' } },
-    { label: 'Customer (A-Z)', config: { key: 'customerName', direction: 'ascending' } },
-    { label: 'Customer (Z-A)', config: { key: 'customerName', direction: 'descending' } },
-    { label: 'Total (Low to High)', config: { key: 'total', direction: 'ascending' } },
-    { label: 'Total (High to Low)', config: { key: 'total', direction: 'descending' } },
+    { label: 'Customer (A-Z)', config: { key: 'customer_name', direction: 'ascending' } },
+    { label: 'Customer (Z-A)', config: { key: 'customer_name', direction: 'descending' } },
+    { label: 'Total (Low-High)', config: { key: 'total', direction: 'ascending' } },
+    { label: 'Total (High-Low)', config: { key: 'total', direction: 'descending' } },
 ];
 
 const SortControls: React.FC<SortControlsProps> = ({ sortConfig, setSortConfig }) => {
@@ -41,12 +41,15 @@ const SortControls: React.FC<SortControlsProps> = ({ sortConfig, setSortConfig }
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-300 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700 transition-colors w-full justify-center md:w-auto"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-300 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors w-full justify-between md:w-auto focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-primary-500"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
             >
-                <ArrowsUpDownIcon />
-                <span>Sort by: <strong>{currentOption.label}</strong></span>
+                <div className="flex items-center gap-1.5">
+                    <ArrowsUpDownIcon />
+                    <span>Sort: <strong>{currentOption.label}</strong></span>
+                </div>
+                <ChevronDownIcon isExpanded={isOpen} />
             </button>
 
             {isOpen && (
@@ -60,9 +63,9 @@ const SortControls: React.FC<SortControlsProps> = ({ sortConfig, setSortConfig }
                                         setSortConfig(option.config);
                                         setIsOpen(false);
                                     }}
-                                    className={`w-full text-left px-3 py-2 text-sm rounded-md ${
+                                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                                         currentOption.label === option.label
-                                            ? 'bg-primary-500 text-white font-semibold'
+                                            ? 'bg-primary-500/90 text-white font-semibold'
                                             : 'text-slate-200 hover:bg-slate-700'
                                     }`}
                                     role="menuitem"

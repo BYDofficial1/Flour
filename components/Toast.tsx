@@ -17,22 +17,16 @@ const ICONS = {
     info: <InformationCircleIcon className="text-blue-400" />,
 };
 
+const BG_GRADIENTS = {
+    success: 'from-green-500/10 via-slate-900 to-slate-900',
+    error: 'from-red-500/10 via-slate-900 to-slate-900',
+    info: 'from-blue-500/10 via-slate-900 to-slate-900',
+};
+
 const BORDER_COLORS = {
-    success: 'border-green-600',
-    error: 'border-red-600',
-    info: 'border-blue-600',
-};
-
-const BG_COLORS = {
-    success: 'bg-green-900/80',
-    error: 'bg-red-900/80',
-    info: 'bg-blue-900/80',
-};
-
-const TEXT_COLORS = {
-    success: 'text-green-200',
-    error: 'text-red-200',
-    info: 'text-blue-200',
+    success: 'border-green-500/50',
+    error: 'border-red-500/50',
+    info: 'border-blue-500/50',
 };
 
 const PROGRESS_BG = {
@@ -42,48 +36,45 @@ const PROGRESS_BG = {
 };
 
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
-    const [isVisible, setIsVisible] = useState(false);
+    const [isExiting, setIsExiting] = useState(false);
 
     useEffect(() => {
-        // Animate in
-        const enterTimeout = setTimeout(() => setIsVisible(true), 50);
-
-        // Set timers for auto-dismiss
-        const timer = setTimeout(() => {
-            setIsVisible(false);
-        }, 2000); // 2 seconds visible
+        const exitTimer = setTimeout(() => {
+            setIsExiting(true);
+        }, 3500); // Start exit animation
 
         const closeTimer = setTimeout(() => {
             onClose();
-        }, 2300); // 2.3 seconds to allow fade out
+        }, 3800); // Fully close after animation
 
         return () => {
-            clearTimeout(enterTimeout);
-            clearTimeout(timer);
+            clearTimeout(exitTimer);
             clearTimeout(closeTimer);
         };
     }, [onClose]);
 
     return (
         <div
-            className={`relative overflow-hidden flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-lg border-l-4 backdrop-blur-sm transition-all duration-300 transform ${BG_COLORS[type]} ${BORDER_COLORS[type]} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+            className={`relative overflow-hidden flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-2xl shadow-black/30 border backdrop-blur-lg bg-slate-900/80 transition-all duration-300
+                ${isExiting ? 'animate-[toast-out_0.3s_ease-in_forwards]' : 'animate-[toast-in_0.3s_ease-out_forwards]'}
+                ${BG_GRADIENTS[type]} ${BORDER_COLORS[type]}`}
             role="alert"
         >
-            <div className="flex-shrink-0">{ICONS[type]}</div>
-            <div className={`ml-3 text-sm font-medium ${TEXT_COLORS[type]}`}>
+            <div className="flex-shrink-0 pt-0.5">{ICONS[type]}</div>
+            <div className="ml-3 text-sm font-medium text-slate-200 flex-1">
                 {message}
             </div>
             <button
                 onClick={onClose}
-                className={`ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg inline-flex h-8 w-8 ${TEXT_COLORS[type]} focus:ring-2 focus:ring-offset-2 ${BG_COLORS[type]} hover:bg-black/20 transition-colors`}
+                className="ml-auto -mx-1.5 -my-1.5 p-1.5 rounded-lg inline-flex h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
                 aria-label="Close"
             >
                 <span className="sr-only">Close</span>
-                <CloseIcon />
+                <CloseIcon className="h-5 w-5"/>
             </button>
             <div 
-                className={`absolute bottom-0 left-0 h-1 ${PROGRESS_BG[type]}`}
-                style={{ animation: 'progress-bar 2s linear forwards' }}
+                className={`absolute bottom-0 left-0 h-0.5 ${PROGRESS_BG[type]}`}
+                style={{ animation: 'progress-bar 3.5s linear forwards' }}
             />
         </div>
     );

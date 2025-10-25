@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import type { Transaction } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -61,7 +62,7 @@ const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSetRem
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 space-y-4">
                         <p className="text-sm text-slate-300">
-                            Set a reminder for the transaction with <strong className="text-primary-400">{transaction.customerName}</strong>.
+                            Set a reminder for the transaction with <strong className="text-primary-400">{transaction.customer_name}</strong>.
                         </p>
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>

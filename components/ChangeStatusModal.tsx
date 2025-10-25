@@ -7,17 +7,17 @@ import { CloseIcon } from './icons/CloseIcon';
 interface ChangeStatusModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (newStatus: Transaction['paymentStatus']) => void;
+    onConfirm: (newStatus: Transaction['payment_status']) => void;
 }
 
 const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ isOpen, onClose, onConfirm }) => {
     if (!isOpen) return null;
 
-    const handleConfirm = (status: Transaction['paymentStatus']) => {
+    const handleConfirm = (status: Transaction['payment_status']) => {
         onConfirm(status);
     };
 
-    const StatusButton: React.FC<{ status: Transaction['paymentStatus'], label: string, color: string }> = ({ status, label, color }) => (
+    const StatusButton: React.FC<{ status: Transaction['payment_status'], label: string, color: string }> = ({ status, label, color }) => (
         <button
             onClick={() => handleConfirm(status)}
             className={`w-full py-3 text-base font-semibold rounded-lg shadow-md transition-all transform hover:scale-105 ${color}`}

@@ -10,13 +10,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 //   - SUPABASE_KEY="your-public-anon-key"
 // (Find these in your Supabase project under Settings > API)
 //
-// STEP 2: CREATE THE 'transactions' TABLE (if you haven't already)
-// Go to your Supabase project > SQL Editor > "New query" and run the table creation script.
-//
-// STEP 3: ENABLE TABLE ACCESS (ROW LEVEL SECURITY)
-// *** YOUR DATA WILL NOT SAVE IF YOU SKIP THIS STEP! ***
-// By default, your new table is protected. You MUST create a policy to allow access.
-// In the SQL Editor, run the policy creation command to allow the app to read and write data.
+// STEP 2: RUN THE DATABASE SETUP SCRIPT
+// You MUST run the commands in `database_setup.sql` in your Supabase SQL Editor.
+// This will create the necessary tables, policies, and storage configurations.
 //
 // --------------------------------------------------------------------
 
@@ -28,13 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = "https://uywayhjzjxwtkoibladb.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5d2F5aGp6anh3dGtvaWJsYWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNDA3ODUsImV4cCI6MjA3NjgxNjc4NX0.yin744V_V--MNP3UfzM-Am_YgnJlkifTsgyrHKn88g4";
 
-
-let supabase: SupabaseClient | null = null;
-
-if (supabaseUrl && supabaseKey) {
-    supabase = createClient(supabaseUrl, supabaseKey);
-} else {
-    console.warn("Supabase credentials are not set. Supabase client not initialized.");
-}
+// The `createClient` function is called with the URL and key.
+const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
 export { supabase };

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -14,6 +12,7 @@ import { SortIcon } from '../components/icons/SortIcon';
 
 interface ReportsPageProps {
     transactions: Transaction[];
+    isEditMode: boolean;
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
@@ -28,9 +27,9 @@ const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: Rea
     </div>
 );
 
-type SortKey = 'date' | 'total' | 'customerName';
+type SortKey = 'date' | 'total' | 'customer_name';
 
-const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
+const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, isEditMode }) => {
     const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().substring(0, 7)); // YYYY-MM
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
 
@@ -64,9 +63,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                         aValue = a.total;
                         bValue = b.total;
                         break;
-                    case 'customerName':
-                        aValue = a.customerName.toLowerCase();
-                        bValue = b.customerName.toLowerCase();
+                    case 'customer_name':
+                        aValue = a.customer_name.toLowerCase();
+                        bValue = b.customer_name.toLowerCase();
                         break;
                     default:
                         return 0;
@@ -85,8 +84,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
         const monthlyStats = filtered.reduce((acc, t) => {
             acc.totalSales += t.total;
             acc.totalQuantity += t.quantity;
-            if (t.paymentStatus !== 'paid') {
-                acc.totalDue += t.total - (t.paidAmount || 0);
+            if (t.payment_status !== 'paid') {
+                acc.totalDue += t.total - (t.paid_amount || 0);
             }
             return acc;
         }, { totalSales: 0, totalQuantity: 0, totalTransactions: filtered.length, totalDue: 0 });
@@ -127,8 +126,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                     />
                     <button
                         onClick={handleExport}
-                        disabled={monthlyTransactions.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-500 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-colors"
+                        disabled={monthlyTransactions.length === 0 || !isEditMode}
+                        title={!isEditMode ? "Unlock Edit Mode to export" : "Export monthly report"}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg shadow-md hover:bg-slate-700 disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
                     >
                         <ExportIcon />
                         <span className="font-semibold">Export TXT</span>
@@ -174,10 +174,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                                             <SortIcon direction={getSortDirection('date')} />
                                         </div>
                                     </th>
-                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('customerName')}>
+                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('customer_name')}>
                                         <div className="flex items-center">
                                             Customer
-                                            <SortIcon direction={getSortDirection('customerName')} />
+                                            <SortIcon direction={getSortDirection('customer_name')} />
                                         </div>
                                     </th>
                                     <th scope="col" className="px-4 py-3 font-semibold">Item</th>
@@ -195,11 +195,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions }) => {
                                 {monthlyTransactions.map(t => (
                                     <tr key={t.id} className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50">
                                         <td className="px-4 py-3 whitespace-nowrap">{new Date(t.date).toLocaleDateString('en-CA')}</td>
-                                        <td className="px-4 py-3 font-medium text-slate-200">{t.customerName}</td>
+                                        <td className="px-4 py-3 font-medium text-slate-200">{t.customer_name}</td>
                                         <td className="px-4 py-3">{t.item}</td>
                                         <td className="px-4 py-3 text-right">{t.quantity.toFixed(2)} kg</td>
                                         <td className="px-4 py-3 text-right font-semibold text-primary-400">{formatCurrency(t.total)}</td>
-                                        <td className="px-4 py-3 text-center capitalize">{t.paymentStatus}</td>
+                                        <td className="px-4 py-3 text-center capitalize">{t.payment_status}</td>
                                     </tr>
                                 ))}
                              </tbody>

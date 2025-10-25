@@ -1,9 +1,7 @@
-
 import React, { useMemo, useState } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { SearchIcon } from '../components/icons/SearchIcon';
-import TransactionList from '../components/TransactionList'; // Re-using this for the detail view would be complex, so building a simple list.
 import { UserIcon } from '../components/icons/UserIcon';
 
 interface Customer {
@@ -35,13 +33,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ transactions }) => {
         const customerMap: { [name: string]: Customer } = {};
 
         transactions.forEach(t => {
-            const name = t.customerName.trim();
+            const name = t.customer_name.trim();
             if (!name) return; // Skip transactions with no customer name
 
             if (!customerMap[name]) {
                 customerMap[name] = {
                     name,
-                    mobile: t.customerMobile,
+                    mobile: t.customer_mobile,
                     totalBusiness: 0,
                     totalPaid: 0,
                     balance: 0,
@@ -51,10 +49,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ transactions }) => {
 
             const customer = customerMap[name];
             customer.totalBusiness += t.total;
-            customer.totalPaid += t.paidAmount || (t.paymentStatus === 'paid' ? t.total : 0);
+            customer.totalPaid += t.paid_amount || (t.payment_status === 'paid' ? t.total : 0);
             customer.transactionCount += 1;
             // Always update mobile if a newer transaction has one
-            if(t.customerMobile) customer.mobile = t.customerMobile;
+            if(t.customer_mobile) customer.mobile = t.customer_mobile;
         });
 
         Object.values(customerMap).forEach(c => {
@@ -76,7 +74,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ transactions }) => {
     const customerTransactions = useMemo(() => {
         if (!selectedCustomer) return [];
         return transactions
-            .filter(t => t.customerName.trim() === selectedCustomer.name)
+            .filter(t => t.customer_name.trim() === selectedCustomer.name)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [selectedCustomer, transactions]);
     
@@ -100,7 +98,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ transactions }) => {
                 <h3 className="text-xl font-bold text-slate-200 mb-4">Transaction History ({customerTransactions.length})</h3>
                  <div className="space-y-3">
                     {customerTransactions.map(t => {
-                         const balanceDue = t.total - (t.paidAmount || 0);
+                         const balanceDue = t.total - (t.paid_amount || 0);
                          return(
                             <div key={t.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                 <div>
@@ -109,8 +107,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ transactions }) => {
                                 </div>
                                 <div className="text-left sm:text-right">
                                     <p className="font-bold text-lg text-primary-400">{formatCurrency(t.total)}</p>
-                                    <p className={`text-sm font-semibold capitalize ${t.paymentStatus === 'paid' ? 'text-green-400' : t.paymentStatus === 'unpaid' ? 'text-red-400' : 'text-yellow-400'}`}>
-                                       {t.paymentStatus} {t.paymentStatus !== 'paid' && `(Due: ${formatCurrency(balanceDue)})`}
+                                    <p className={`text-sm font-semibold capitalize ${t.payment_status === 'paid' ? 'text-green-400' : t.payment_status === 'unpaid' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                       {t.payment_status} {t.payment_status !== 'paid' && `(Due: ${formatCurrency(balanceDue)})`}
                                     </p>
                                 </div>
                             </div>

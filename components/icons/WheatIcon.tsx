@@ -1,9 +1,9 @@
 import React from 'react';
 
-export const WheatIcon: React.FC<{ isEditMode: boolean }> = ({ isEditMode }) => (
+export const WheatIcon: React.FC = () => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
-        className={`h-8 w-8 text-primary-500 transition-all duration-300 ${isEditMode ? 'drop-shadow-glow scale-110' : ''}`}
+        className="h-8 w-8 text-primary-500 transition-all duration-300 drop-shadow-glow scale-110"
         viewBox="0 0 24 24" 
         fill="none" 
         stroke="currentColor" 

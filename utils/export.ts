@@ -31,29 +31,29 @@ Total Transactions: ${transactions.length}
 `;
 
     transactions.forEach((t, index) => {
-        const balanceDue = t.total - (t.paidAmount || 0);
+        const balanceDue = t.total - (t.paid_amount || 0);
         const transactionCard = `
 =============================================
 Transaction #${index + 1}
 ---------------------------------------------
 ID:            ${t.id}
 Date:          ${new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year:'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
-Customer:      ${t.customerName}
-Mobile:        ${t.customerMobile || 'N/A'}
+Customer:      ${t.customer_name}
+Mobile:        ${t.customer_mobile || 'N/A'}
 Item:          ${t.item}
 
 --- Breakdown ---
 Quantity:      ${t.quantity.toFixed(2)} kg
 Rate:          ${t.rate.toFixed(2)} Rs/kg
-Grinding Cost: ${(t.grindingCost || 0).toFixed(2)} Rs
-Cleaning Cost: ${(t.cleaningCost || 0).toFixed(2)} Rs
+Grinding Cost: ${(t.grinding_cost || 0).toFixed(2)} Rs
+Cleaning Cost: ${(t.cleaning_cost || 0).toFixed(2)} Rs
 -----------------
 TOTAL:         ${t.total.toFixed(2)} Rs
 -----------------
 
 --- Payment ---
-Status:        ${t.paymentStatus.toUpperCase()}
-Paid Amount:   ${(t.paidAmount || 0).toFixed(2)} Rs
+Status:        ${t.payment_status.toUpperCase()}
+Paid Amount:   ${(t.paid_amount || 0).toFixed(2)} Rs
 Balance Due:   ${balanceDue.toFixed(2)} Rs
 ---------------
 
@@ -113,15 +113,15 @@ Total Due Balance:  ${formatCurrency(stats.totalDue)}
 `;
 
     transactions.forEach((t, index) => {
-        const balanceDue = t.total - (t.paidAmount || 0);
+        const balanceDue = t.total - (t.paid_amount || 0);
         reportContent += `
 ---------------------------------------------
-  #${index + 1} | ${new Date(t.date).toLocaleDateString('en-CA')} | ${t.customerName}
+  #${index + 1} | ${new Date(t.date).toLocaleDateString('en-CA')} | ${t.customer_name}
 ---------------------------------------------
   Item:         ${t.item}
   Quantity:     ${t.quantity.toFixed(2)} kg @ ${formatCurrency(t.rate)}/kg
   Total:        ${formatCurrency(t.total)}
-  Status:       ${t.paymentStatus.toUpperCase()} (Due: ${formatCurrency(balanceDue)})
+  Status:       ${t.payment_status.toUpperCase()} (Due: ${formatCurrency(balanceDue)})
 `;
     });
 

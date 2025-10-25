@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -16,8 +17,8 @@ const getDiffFields = (local: Transaction, server: Transaction): Set<keyof Trans
     if (!local || !server) return diff;
 
     const keys: (keyof Transaction)[] = [
-        'customerName', 'customerMobile', 'item', 'quantity', 'rate', 
-        'grindingCost', 'cleaningCost', 'total', 'paymentStatus', 'paidAmount', 'notes'
+        'customer_name', 'customer_mobile', 'item', 'quantity', 'rate', 
+        'grinding_cost', 'cleaning_cost', 'total', 'payment_status', 'paid_amount', 'notes'
     ];
 
     for (const key of keys) {
@@ -44,31 +45,31 @@ const DetailRow: React.FC<{ label: string; value: React.ReactNode; isDiff: boole
 );
 
 const TransactionDetailView: React.FC<{ transaction: Transaction; diffFields: Set<keyof Transaction> }> = ({ transaction, diffFields }) => {
-    const balanceDue = transaction.total - (transaction.paidAmount || 0);
+    const balanceDue = transaction.total - (transaction.paid_amount || 0);
 
     return (
         <div className="space-y-2">
-            <DetailRow label="Customer Name" value={transaction.customerName} isDiff={diffFields.has('customerName')} />
-            <DetailRow label="Customer Mobile" value={transaction.customerMobile} isDiff={diffFields.has('customerMobile')} />
+            <DetailRow label="Customer Name" value={transaction.customer_name} isDiff={diffFields.has('customer_name')} />
+            <DetailRow label="Customer Mobile" value={transaction.customer_mobile} isDiff={diffFields.has('customer_mobile')} />
             <DetailRow label="Item" value={transaction.item} isDiff={diffFields.has('item')} />
             <div className="grid grid-cols-2 gap-2">
                 <DetailRow label="Quantity (kg)" value={transaction.quantity?.toFixed(2)} isDiff={diffFields.has('quantity')} />
                 <DetailRow label="Rate (Rs/kg)" value={formatCurrency(transaction.rate || 0)} isDiff={diffFields.has('rate')} />
             </div>
              <div className="grid grid-cols-2 gap-2">
-                <DetailRow label="Grinding Cost" value={formatCurrency(transaction.grindingCost || 0)} isDiff={diffFields.has('grindingCost')} />
-                <DetailRow label="Cleaning Cost" value={formatCurrency(transaction.cleaningCost || 0)} isDiff={diffFields.has('cleaningCost')} />
+                <DetailRow label="Grinding Cost" value={formatCurrency(transaction.grinding_cost || 0)} isDiff={diffFields.has('grinding_cost')} />
+                <DetailRow label="Cleaning Cost" value={formatCurrency(transaction.cleaning_cost || 0)} isDiff={diffFields.has('cleaning_cost')} />
             </div>
             <div className="border-t my-2 border-slate-600"></div>
              <div className="grid grid-cols-2 gap-2">
-                <DetailRow label="Status" value={<span className="capitalize">{transaction.paymentStatus}</span>} isDiff={diffFields.has('paymentStatus')} />
-                <DetailRow label="Paid Amount" value={formatCurrency(transaction.paidAmount || 0)} isDiff={diffFields.has('paidAmount')} />
+                <DetailRow label="Status" value={<span className="capitalize">{transaction.payment_status}</span>} isDiff={diffFields.has('payment_status')} />
+                <DetailRow label="Paid Amount" value={formatCurrency(transaction.paid_amount || 0)} isDiff={diffFields.has('paid_amount')} />
             </div>
             <DetailRow label="Balance Due" value={formatCurrency(balanceDue)} isDiff={diffFields.has('total')} />
             <DetailRow label="Total" value={<span className="font-bold text-lg text-primary-400">{formatCurrency(transaction.total)}</span>} isDiff={diffFields.has('total')} />
             <DetailRow label="Notes" value={<span className="italic">"{transaction.notes}"</span>} isDiff={diffFields.has('notes')} />
             <div className="text-right text-xs text-slate-500 pt-1">
-                Last updated: {transaction.updatedAt ? new Date(transaction.updatedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year:'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
+                Last updated: {transaction.updated_at ? new Date(transaction.updated_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year:'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}
             </div>
         </div>
     );
@@ -114,7 +115,7 @@ const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = ({ isOpe
                         Resolve Sync Conflict ({currentIndex + 1} of {conflicts.length})
                     </h2>
                     <p className="text-center text-sm text-slate-300 mt-1">
-                        The record for <strong className="text-primary-400">{local.customerName}</strong> was updated on another device. Choose which version to keep.
+                        The record for <strong className="text-primary-400">{local.customer_name}</strong> was updated on another device. Choose which version to keep.
                     </p>
                 </header>
                 
