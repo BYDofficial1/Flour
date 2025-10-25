@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Fragment } from 'react';
 import type { Transaction, Reminder } from '../types';
 import { EditIcon } from './icons/EditIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
@@ -8,6 +8,9 @@ import { ClockIcon } from './icons/ClockIcon';
 import { BellIcon } from './icons/BellIcon';
 import { DotsVerticalIcon } from './icons/DotsVerticalIcon';
 import { SortIcon } from './icons/SortIcon';
+import { ChevronDownIcon } from './icons/ChevronDownIcon';
+import { ReceiptIcon } from './icons/ReceiptIcon';
+
 
 type SortKey = 'date' | 'total' | 'customerName';
 
@@ -17,6 +20,7 @@ interface TransactionListProps {
     transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
+    onDuplicate: (transaction: Transaction) => void;
     unsyncedIds: Set<string>;
     isBulkSelectMode: boolean;
     onSetReminder: (transaction: Transaction) => void;
@@ -38,6 +42,56 @@ const StatusBadge: React.FC<{ status: Transaction['paymentStatus'] }> = ({ statu
     };
     return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
 };
+
+const ExpandedDetailView: React.FC<{ t: Transaction, onDuplicate: (t: Transaction) => void, isEditMode: boolean }> = ({ t, onDuplicate, isEditMode }) => {
+    const balanceDue = t.total - (t.paidAmount || 0);
+    const isGrindingService = GRINDING_SERVICES.includes(t.item);
+
+    const DetailItem: React.FC<{ label: string, value: React.ReactNode, fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
+        <div className={fullWidth ? 'sm:col-span-2' : ''}>
+            <p className="text-xs text-slate-400">{label}</p>
+            <p className="text-sm font-medium text-slate-100">{value}</p>
+        </div>
+    );
+
+    return (
+        <div className="bg-slate-900/50 p-4 animate-[fadeIn_0.2s_ease-out]">
+            <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="sm:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!isGrindingService && <DetailItem label="Rate" value={`${formatCurrency(t.rate)} / kg`} />}
+                    <DetailItem label="Grinding Cost" value={formatCurrency(t.grindingCost ?? 0)} />
+                    <DetailItem label="Cleaning Cost" value={formatCurrency(t.cleaningCost ?? 0)} />
+                    <DetailItem label="Customer Mobile" value={t.customerMobile || 'N/A'} />
+                </div>
+                
+                <div className="border-t border-slate-700 sm:col-span-2"></div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:col-span-2">
+                    <DetailItem label="Total Amount" value={<span className="font-bold text-primary-400">{formatCurrency(t.total)}</span>} />
+                    <DetailItem label="Paid Amount" value={formatCurrency(t.paidAmount ?? 0)} />
+                    <DetailItem label="Balance Due" value={<span className="font-bold text-red-400">{formatCurrency(balanceDue)}</span>} />
+                    <DetailItem label="Full Date & Time" value={new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} />
+                </div>
+                
+                {t.notes && <DetailItem label="Notes" value={<p className="italic bg-slate-700 p-2 rounded-md">"{t.notes}"</p>} fullWidth />}
+                
+                {isEditMode && (
+                     <div className="sm:col-span-2 flex justify-end">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDuplicate(t); }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-600 text-white text-xs font-semibold rounded-lg shadow-md hover:bg-slate-700 transition-transform transform hover:scale-105"
+                        >
+                           <ReceiptIcon className="h-4 w-4" />
+                            <span>Duplicate</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 const TransactionCard: React.FC<{ 
     t: Transaction, 
@@ -181,6 +235,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
     transactions,
     onEdit,
     onDelete,
+    onDuplicate,
     unsyncedIds,
     isBulkSelectMode,
     onSetReminder,
@@ -193,6 +248,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
     setSortConfig,
 }) => {
     
+    const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
     if (transactions.length === 0) {
          return (
             <div className="text-center py-16 px-6 bg-slate-800 rounded-xl shadow-lg border-2 border-dashed border-slate-700">
@@ -217,6 +274,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
     };
 
     const allSelected = selectedIds.size > 0 && selectedIds.size === transactions.length;
+    
+    const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
+    let colCount = 7;
+    if (isBulkSelectMode) colCount++;
+    if (isEditMode) colCount++;
 
     return (
         <div>
@@ -255,6 +318,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                                         />
                                     </th>
                                 )}
+                                <th scope="col" className="w-12 px-4 py-3"></th>
                                 <th scope="col" className="px-6 py-3 cursor-pointer hover:bg-slate-700" onClick={() => requestSort('date')}>
                                     <div className="flex items-center">Date <SortIcon direction={getSortDirection('date')} /></div>
                                 </th>
@@ -272,43 +336,58 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         </thead>
                         <tbody>
                             {transactions.map(t => (
-                                <tr key={t.id} className={`border-b border-slate-700 transition-colors ${selectedIds.has(t.id) ? 'bg-primary-900/20' : 'hover:bg-slate-700/30'}`}>
-                                    {isBulkSelectMode && (
-                                        <td className="p-4">
-                                            <input
-                                                type="checkbox"
-                                                className="h-4 w-4 rounded border-slate-500 bg-slate-600 text-primary-600 focus:ring-primary-500 focus:ring-offset-slate-800"
-                                                checked={selectedIds.has(t.id)}
-                                                onChange={() => onSelectOne(t.id)}
-                                            />
+                                <Fragment key={t.id}>
+                                    <tr 
+                                        onClick={() => setExpandedRowId(prev => (prev === t.id ? null : t.id))}
+                                        className={`border-b border-slate-700 transition-colors cursor-pointer ${selectedIds.has(t.id) ? 'bg-primary-900/30' : 'hover:bg-slate-700/30'} ${expandedRowId === t.id ? 'bg-slate-700/40' : ''}`}
+                                    >
+                                        {isBulkSelectMode && (
+                                            <td className="p-4" onClick={stopPropagation}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 rounded border-slate-500 bg-slate-600 text-primary-600 focus:ring-primary-500 focus:ring-offset-slate-800"
+                                                    checked={selectedIds.has(t.id)}
+                                                    onChange={() => onSelectOne(t.id)}
+                                                />
+                                            </td>
+                                        )}
+                                        <td className="px-4 py-4 text-center">
+                                            <ChevronDownIcon isExpanded={expandedRowId === t.id} />
                                         </td>
-                                    )}
-                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(t.date).toLocaleDateString('en-CA')}</td>
-                                    <td className="px-6 py-4 font-medium text-slate-100">{t.customerName}</td>
-                                    <td className="px-6 py-4">{t.item}</td>
-                                    <td className="px-6 py-4 text-right">{t.quantity.toFixed(2)} kg</td>
-                                    <td className="px-6 py-4 text-right font-bold text-primary-400">{formatCurrency(t.total)}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <StatusBadge status={t.paymentStatus} />
-                                    </td>
-                                    {isEditMode && (
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {t.paymentStatus !== 'paid' && (
-                                                    <button onClick={() => onSetReminder(t)} className="p-2 text-slate-400 hover:text-primary-400 rounded-md hover:bg-slate-700" aria-label="Set Reminder">
-                                                        <BellIcon isActive={!!reminders.find(r => r.transactionId === t.id)} />
+                                        <td className="px-6 py-4 whitespace-nowrap">{new Date(t.date).toLocaleDateString('en-CA')}</td>
+                                        <td className="px-6 py-4 font-medium text-slate-100">{t.customerName}</td>
+                                        <td className="px-6 py-4">{t.item}</td>
+                                        <td className="px-6 py-4 text-right">{t.quantity.toFixed(2)} kg</td>
+                                        <td className="px-6 py-4 text-right font-bold text-primary-400">{formatCurrency(t.total)}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <StatusBadge status={t.paymentStatus} />
+                                        </td>
+                                        {isEditMode && (
+                                            <td className="px-6 py-4 text-right" onClick={stopPropagation}>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {t.paymentStatus !== 'paid' && (
+                                                        <button onClick={() => onSetReminder(t)} className="p-2 text-slate-400 hover:text-primary-400 rounded-md hover:bg-slate-700" aria-label="Set Reminder">
+                                                            <BellIcon isActive={!!reminders.find(r => r.transactionId === t.id)} />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => onEdit(t)} className="p-2 text-slate-400 hover:text-blue-400 rounded-md hover:bg-slate-700" aria-label="Edit">
+                                                        <EditIcon />
                                                     </button>
-                                                )}
-                                                <button onClick={() => onEdit(t)} className="p-2 text-slate-400 hover:text-blue-400 rounded-md hover:bg-slate-700" aria-label="Edit">
-                                                    <EditIcon />
-                                                </button>
-                                                <button onClick={() => onDelete(t.id)} className="p-2 text-slate-400 hover:text-red-400 rounded-md hover:bg-slate-700" aria-label="Delete">
-                                                    <DeleteIcon />
-                                                </button>
-                                            </div>
-                                        </td>
+                                                    <button onClick={() => onDelete(t.id)} className="p-2 text-slate-400 hover:text-red-400 rounded-md hover:bg-slate-700" aria-label="Delete">
+                                                        <DeleteIcon />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
+                                    </tr>
+                                    {expandedRowId === t.id && (
+                                        <tr className="bg-slate-900/20">
+                                            <td colSpan={colCount}>
+                                                <ExpandedDetailView t={t} onDuplicate={onDuplicate} isEditMode={isEditMode} />
+                                            </td>
+                                        </tr>
                                     )}
-                                </tr>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

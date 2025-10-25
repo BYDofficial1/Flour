@@ -100,7 +100,7 @@ interface TransactionsPageProps {
     transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
-    openModal: () => void;
+    openModal: (transaction?: null, prefill?: Partial<Transaction>) => void;
     timeFilter: TimeFilter;
     setTimeFilter: (filter: TimeFilter) => void;
     searchQuery: string;
@@ -144,6 +144,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+    const { addNotification } = useNotifier();
 
     const handleSelectOne = useCallback((id: string) => {
         setSelectedTransactionIds(prev => {
@@ -197,6 +198,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         setIsBulkSelectMode(false);
     };
 
+    const handleDuplicate = (transaction: Transaction) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, date, updatedAt, ...prefillData } = transaction;
+        openModal(null, prefillData);
+        addNotification(`Duplicating transaction for ${transaction.customerName}. Adjust details and save.`, 'info');
+    };
+
     return (
         <div className="mt-4 space-y-6 pb-24">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -246,6 +254,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 transactions={transactions}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onDuplicate={handleDuplicate}
                 unsyncedIds={unsyncedIds}
                 isBulkSelectMode={isBulkSelectMode}
                 onSetReminder={onSetReminder}
@@ -260,7 +269,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             
             {isEditMode && (
                 <button
-                    onClick={openModal}
+                    onClick={() => openModal()}
                     className={`fixed right-6 bg-primary-500 text-white rounded-full p-4 shadow-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-primary-500 transition-all duration-300 transform hover:scale-110 z-30 ${
                         selectedTransactionIds.size > 0 ? 'bottom-28 lg:bottom-24' : 'bottom-6'
                     }`}

@@ -156,7 +156,7 @@ const App: React.FC = () => {
     
     const [currentPage, setCurrentPage] = useState<Page>('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [isEditMode, setIsEditMode] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -170,6 +170,7 @@ const App: React.FC = () => {
     const syncLock = useRef(false);
     const isInitialSync = useRef(true);
     const [queueVersion, setQueueVersion] = useState(0); // Used to trigger re-renders for unsyncedCount
+    const editModeTapState = useRef<{ count: number; timer: number | null }>({ count: 0, timer: null });
 
     const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
@@ -217,11 +218,34 @@ const App: React.FC = () => {
         if (noticeDismissed !== 'true') {
             setIsNoticeVisible(true);
         }
+
+        // Set edit mode to false on initial load
+        setIsEditMode(false);
     }, []);
 
     const dismissNotice = () => {
         setIsNoticeVisible(false);
         localStorage.setItem('noticeDismissed', 'true');
+    };
+
+    const handleToggleEditMode = () => {
+        if (editModeTapState.current.timer) {
+            clearTimeout(editModeTapState.current.timer);
+        }
+
+        editModeTapState.current.count += 1;
+
+        if (editModeTapState.current.count === 3) {
+            const newEditModeState = !isEditMode;
+            setIsEditMode(newEditModeState);
+            addNotification(`Edit mode ${newEditModeState ? 'enabled' : 'disabled'}.`, newEditModeState ? 'success' : 'info');
+            editModeTapState.current = { count: 0, timer: null };
+            return;
+        }
+
+        editModeTapState.current.timer = window.setTimeout(() => {
+            editModeTapState.current = { count: 0, timer: null };
+        }, 400);
     };
 
     const syncData = useCallback(async () => {
@@ -612,14 +636,15 @@ const App: React.FC = () => {
                             allTransactions={transactions}
                             timeFilter={timeFilter} 
                             setTimeFilter={setTimeFilter} 
-                            isEditMode={isEditMode} 
+                            isEditMode={isEditMode}
+                            setCurrentPage={setCurrentPage}
                         />;
             case 'transactions':
                 return <TransactionsPage 
                             transactions={filteredTransactions}
                             onEdit={openModal}
                             onDelete={(id) => setTransactionToDelete(id)}
-                            openModal={() => openModal()}
+                            openModal={openModal}
                             timeFilter={timeFilter}
                             setTimeFilter={setTimeFilter}
                             searchQuery={searchQuery}
@@ -661,6 +686,7 @@ const App: React.FC = () => {
                             timeFilter={timeFilter} 
                             setTimeFilter={setTimeFilter} 
                             isEditMode={isEditMode}
+                            setCurrentPage={setCurrentPage}
                         />;
         }
     };
@@ -673,11 +699,7 @@ const App: React.FC = () => {
                 currentPage={currentPage} 
                 setCurrentPage={setCurrentPage}
                 isEditMode={isEditMode}
-                onToggleEditMode={() => {
-                    if(isEditMode) addNotification('Edit mode disabled.', 'info');
-                    else addNotification('Edit mode enabled.', 'success');
-                    setIsEditMode(!isEditMode)
-                }}
+                onToggleEditMode={handleToggleEditMode}
             />
 
             <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">

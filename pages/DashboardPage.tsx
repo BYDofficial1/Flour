@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import type { Transaction } from '../types';
-import type { TimeFilter } from '../App';
+import type { TimeFilter, Page } from '../App';
 import Dashboard from '../components/Dashboard';
 import MainChart from '../components/SalesChart';
 import TimeFilterControls from '../components/TimeFilterControls';
@@ -13,9 +13,10 @@ interface DashboardPageProps {
     timeFilter: TimeFilter;
     setTimeFilter: (filter: TimeFilter) => void;
     isEditMode: boolean;
+    setCurrentPage: (page: Page) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, allTransactions, timeFilter, setTimeFilter, isEditMode }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, allTransactions, timeFilter, setTimeFilter, isEditMode, setCurrentPage }) => {
     
     return (
         <div className="space-y-8 mt-4">
@@ -39,7 +40,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, allTransact
             <Dashboard transactions={transactions} />
 
             <div className="w-full">
-                <MainChart transactions={transactions} />
+                <MainChart 
+                    transactions={transactions} 
+                    setTimeFilter={setTimeFilter}
+                    setCurrentPage={setCurrentPage}
+                />
             </div>
         </div>
     );

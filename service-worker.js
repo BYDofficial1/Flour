@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'atta-chakki-hisab-v12'; // Bumped version to invalidate old cache
+const CACHE_NAME = 'atta-chakki-hisab-v13'; // Bumped version to invalidate old cache
 const CACHE_FILES = [
     // Core
     '/',

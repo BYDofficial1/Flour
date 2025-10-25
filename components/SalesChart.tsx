@@ -1,17 +1,27 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Transaction } from '../types';
+import type { TimeFilter, Page } from '../App';
 import { formatCurrency } from '../utils/currency';
 import { ChartPieIcon } from './icons/ChartPieIcon';
 import { SyncIcon } from './icons/SyncIcon';
+import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
+import { useNotifier } from '../context/NotificationContext';
 
 declare const Chart: any;
 
 interface MainChartProps {
     transactions: Transaction[];
+    setTimeFilter: (filter: TimeFilter) => void;
+    setCurrentPage: (page: Page) => void;
 }
 
 type ChartView = 'sales' | 'quantity';
 type Aggregation = 'daily' | 'weekly' | 'monthly';
+type ChartData = {
+    labels: string[];
+    data: number[];
+    periodData: number[];
+};
 
 const hexToRgba = (hex: string, alpha: number): string => {
     let r = 0, g = 0, b = 0;
@@ -30,66 +40,91 @@ const hexToRgba = (hex: string, alpha: number): string => {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
+const MainChart: React.FC<MainChartProps> = ({ transactions, setTimeFilter, setCurrentPage }) => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstance = useRef<any>(null);
+    const { addNotification } = useNotifier();
     const [chartView, setChartView] = useState<ChartView>('sales');
-    const [aggregation, setAggregation] = useState<Aggregation>('daily');
+    const [aggregation, setAggregation] = useState<Aggregation>('monthly');
     const [libsLoaded, setLibsLoaded] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [chartData, setChartData] = useState<ChartData>({ labels: [], data: [], periodData: [] });
 
     useEffect(() => {
-        // Check if libraries are already available
-        if ((window as any).Chart && (window as any).dateFns) {
+        const areLibsReady = () => (window as any).Chart && (window as any).dateFns && (window as any).Chart._adapters?._date;
+
+        if (areLibsReady()) {
             setLibsLoaded(true);
             return;
         }
 
-        // If not, poll for them
+        let checks = 0;
+        const maxChecks = 50; // 5 seconds timeout (50 * 100ms)
         const interval = setInterval(() => {
-            if ((window as any).Chart && (window as any).dateFns) {
+            if (areLibsReady()) {
                 setLibsLoaded(true);
                 clearInterval(interval);
+            } else {
+                checks++;
+                if (checks >= maxChecks) {
+                    clearInterval(interval);
+                    setLoadError("Chart libraries failed to load. Please check your internet connection and refresh.");
+                }
             }
         }, 100);
 
         return () => clearInterval(interval);
     }, []);
 
-    const chartData = useMemo(() => {
-        const dateFns = (window as any).dateFns;
-        if (transactions.length === 0 || !libsLoaded || !dateFns) {
-            return { labels: [], data: [] };
+    useEffect(() => {
+        if (transactions.length === 0 || !libsLoaded) {
+            setChartData({ labels: [], data: [], periodData: [] });
+            return;
         }
 
-        const aggregationMap = new Map<string, number>();
+        setIsProcessing(true);
 
-        transactions.forEach(t => {
-            const date = new Date(t.date);
-            let key = '';
-            if (aggregation === 'daily') {
-                key = dateFns.format(date, 'yyyy-MM-dd');
-            } else if (aggregation === 'weekly') {
-                key = dateFns.format(dateFns.startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-            } else { // monthly
-                key = dateFns.format(dateFns.startOfMonth(date), 'yyyy-MM-01');
+        // Defer heavy work to next tick to allow UI to update with spinner
+        const processTimeout = setTimeout(() => {
+            const dateFns = (window as any).dateFns;
+            if (!dateFns) {
+                setIsProcessing(false);
+                return; // Libs not ready, should be caught by libsLoaded but as a safeguard
             }
+            const aggregationMap = new Map<string, number>();
+            transactions.forEach(t => {
+                const date = new Date(t.date);
+                let key = '';
+                if (aggregation === 'daily') {
+                    key = dateFns.format(date, 'yyyy-MM-dd');
+                } else if (aggregation === 'weekly') {
+                    key = dateFns.format(dateFns.startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+                } else { // monthly
+                    key = dateFns.format(dateFns.startOfMonth(date), 'yyyy-MM-01');
+                }
+                const value = chartView === 'sales' ? t.total : t.quantity;
+                aggregationMap.set(key, (aggregationMap.get(key) || 0) + value);
+            });
+            const sortedData = Array.from(aggregationMap.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+            
+            let cumulativeValue = 0;
+            const cumulativeData = sortedData.map(d => {
+                cumulativeValue += d[1];
+                return cumulativeValue;
+            });
 
-            const value = chartView === 'sales' ? t.total : t.quantity;
-            aggregationMap.set(key, (aggregationMap.get(key) || 0) + value);
-        });
-        
-        const sortedData = Array.from(aggregationMap.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
-        
-        let cumulativeValue = 0;
-        const cumulativeData = sortedData.map(d => {
-            cumulativeValue += d[1];
-            return cumulativeValue;
-        });
+            const periodValues = sortedData.map(d => d[1]);
 
-        return {
-            labels: sortedData.map(d => d[0]),
-            data: cumulativeData,
-        };
+            setChartData({
+                labels: sortedData.map(d => d[0]),
+                data: cumulativeData,
+                periodData: periodValues,
+            });
+            setIsProcessing(false);
+        }, 50); // Small delay to ensure loader renders
+
+        return () => clearTimeout(processTimeout);
     }, [transactions, chartView, aggregation, libsLoaded]);
 
     useEffect(() => {
@@ -106,7 +141,7 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
         const computedStyle = getComputedStyle(document.documentElement);
         const primaryColor500 = `rgb(${computedStyle.getPropertyValue('--color-primary-500').trim()})`;
         
-        const { labels, data } = chartData;
+        const { labels, data, periodData } = chartData;
         const ctx = chartRef.current.getContext('2d');
         if (!ctx) return;
         
@@ -140,6 +175,39 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: (event: any, chartElement: any[]) => {
+                    const target = event.native?.target as HTMLElement;
+                    if (target) {
+                        target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    }
+                },
+                onClick: (event: any, elements: any[]) => {
+                    if (elements.length > 0 && chartData.labels.length > 0) {
+                        const elementIndex = elements[0].index;
+                        const clickedLabel = chartData.labels[elementIndex];
+                        if (!clickedLabel) return;
+                        
+                        const dateFns = (window as any).dateFns;
+                        const startDate = dateFns.parseISO(clickedLabel);
+                        let endDate;
+
+                        if (aggregation === 'daily') {
+                            endDate = startDate;
+                        } else if (aggregation === 'weekly') {
+                            endDate = dateFns.endOfWeek(startDate, { weekStartsOn: 1 });
+                        } else { // monthly
+                            endDate = dateFns.endOfMonth(startDate);
+                        }
+
+                        setTimeFilter({ 
+                            period: 'custom', 
+                            startDate: dateFns.format(startDate, 'yyyy-MM-dd'),
+                            endDate: dateFns.format(endDate, 'yyyy-MM-dd'),
+                        });
+                        setCurrentPage('transactions');
+                        addNotification('Chart selection applied. Viewing transactions for the selected period.', 'info');
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -188,18 +256,24 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
                         mode: 'index',
                         callbacks: {
                             label: function(context: any) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
+                                const index = context.dataIndex;
+                                if (index >= periodData.length) return '';
+                                
+                                const periodValue = periodData[index];
+                                const cumulativeValue = context.parsed.y;
+                                
+                                let periodLabel: string;
+                                let cumulativeLabel: string;
+                    
+                                if (chartView === 'sales') {
+                                    periodLabel = `Period: ${formatCurrency(periodValue)}`;
+                                    cumulativeLabel = `Cumulative: ${formatCurrency(cumulativeValue)}`;
+                                } else {
+                                    periodLabel = `Period: ${periodValue.toFixed(2)} kg`;
+                                    cumulativeLabel = `Cumulative: ${cumulativeValue.toFixed(2)} kg`;
                                 }
-                                if (context.parsed.y !== null) {
-                                     if (chartView === 'sales') {
-                                        label += formatCurrency(context.parsed.y);
-                                    } else {
-                                        label += `${context.parsed.y.toFixed(2)} kg`;
-                                    }
-                                }
-                                return label;
+                    
+                                return [periodLabel, cumulativeLabel];
                             }
                         }
                     }
@@ -207,7 +281,7 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
             }
         });
 
-    }, [chartData, chartView, aggregation, libsLoaded]);
+    }, [chartData, chartView, aggregation, libsLoaded, setTimeFilter, setCurrentPage, addNotification]);
 
     const ToggleButton: React.FC<{
         isActive: boolean;
@@ -243,10 +317,15 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
                 </div>
             </div>
             <div className="relative h-64 sm:h-80">
-                {!libsLoaded && transactions.length > 0 ? (
+                {loadError ? (
                     <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4">
+                        <ExclamationCircleIcon className="h-8 w-8 text-red-400" />
+                        <p className="text-red-400 mt-2 text-sm">{loadError}</p>
+                    </div>
+                ) : (!libsLoaded && transactions.length > 0) || isProcessing ? (
+                    <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-4 bg-slate-800/50 backdrop-blur-sm">
                         <SyncIcon className="h-8 w-8 text-slate-400 animate-spin" />
-                        <p className="text-slate-400 mt-2 text-sm">Loading chart libraries...</p>
+                        <p className="text-slate-400 mt-2 text-sm">{isProcessing ? 'Processing data...' : 'Loading chart libraries...'}</p>
                     </div>
                 ) : chartData.data.length > 0 ? (
                     <canvas ref={chartRef}></canvas>
