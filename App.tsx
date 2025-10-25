@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction, Reminder, Settings, Theme, Calculation } from './types';
 import Header from './components/Header';
@@ -7,6 +8,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
+import CustomersPage from './pages/CustomersPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ConflictResolutionModal from './components/ConflictResolutionModal';
@@ -14,16 +16,15 @@ import ReminderModal from './components/ReminderModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
 import { playNotificationSound } from './utils/sound';
-import { formatCurrency } from './utils/currency';
 
-
-export type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
+export type Page = 'transactions' | 'dashboard' | 'customers' | 'calculator' | 'settings' | 'reports';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
     endDate?: string;
 }
 export type TimePeriod = 'today' | 'week' | 'month' | 'all' | 'custom';
+export type SortKey = 'date' | 'total' | 'customerName';
 
 const SYNC_QUEUES = {
     CREATES: 'unsynced_creates',
@@ -37,7 +38,6 @@ const CALC_SYNC_QUEUES = {
     DELETES: 'unsynced_calc_deletes',
 };
 
-// Map snake_case from DB to camelCase for UI (Transactions)
 const fromSupabase = (t: any): Transaction => ({
   id: t.id,
   customerName: t.customer_name,
@@ -51,11 +51,10 @@ const fromSupabase = (t: any): Transaction => ({
   cleaningCost: t.cleaning_cost,
   notes: t.notes,
   updatedAt: t.updated_at,
-  paymentStatus: t.payment_status || 'paid', // Default old records to 'paid'
+  paymentStatus: t.payment_status || 'paid',
   paidAmount: t.paid_amount,
 });
 
-// Map camelCase from UI to snake_case for DB (Transactions)
 const toSupabase = (t: Partial<Transaction>): any => ({
   id: t.id,
   customer_name: t.customerName,
@@ -68,11 +67,11 @@ const toSupabase = (t: Partial<Transaction>): any => ({
   grinding_cost: t.grindingCost,
   cleaning_cost: t.cleaningCost,
   notes: t.notes,
+  updated_at: t.updatedAt,
   payment_status: t.paymentStatus,
   paid_amount: t.paidAmount,
 });
 
-// Map snake_case from DB to camelCase for UI (Calculations)
 const fromSupabaseCalc = (c: any): Calculation => ({
   id: c.id,
   customerName: c.customer_name,
@@ -85,18 +84,17 @@ const fromSupabaseCalc = (c: any): Calculation => ({
   updatedAt: c.updated_at,
 });
 
-// Map camelCase from UI to snake_case for DB (Calculations)
 const toSupabaseCalc = (c: Partial<Calculation>): any => ({
   id: c.id,
   customer_name: c.customerName,
   total_kg: c.totalKg,
   total_price: c.totalPrice,
   bags: c.bags,
-  created_at: c.createdAt,
   notes: c.notes,
   price_per_maund: c.pricePerMaund,
+  updated_at: c.updatedAt,
+  created_at: c.createdAt,
 });
-
 
 const getQueue = <T,>(key: string): T[] => {
     const stored = localStorage.getItem(key);
@@ -106,840 +104,587 @@ const getQueue = <T,>(key: string): T[] => {
         return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
         console.error(`Failed to parse queue from localStorage for key "${key}":`, error);
-        localStorage.removeItem(key); // Clear corrupted data
+        localStorage.removeItem(key);
         return [];
     }
 };
 
+const mergeData = (
+    localData: Transaction[], 
+    serverData: Transaction[], 
+    pushedIds: Set<string>
+): { mergedData: Transaction[], newConflicts: { local: Transaction, server: Transaction }[] } => {
+    
+    const localMap = new Map(localData.map(d => [d.id, d]));
+    const serverMap = new Map(serverData.map(d => [d.id, d]));
+    const mergedMap = new Map<string, Transaction>();
+    const newConflicts: { local: Transaction, server: Transaction }[] = [];
+
+    // Process all server items
+    for (const serverItem of serverData) {
+        const localItem = localMap.get(serverItem.id);
+        if (localItem) {
+            // Item exists in both places
+            if (pushedIds.has(localItem.id)) {
+                 // We just pushed this. Server version is the most up-to-date.
+                mergedMap.set(serverItem.id, serverItem);
+            } else {
+                const serverDate = new Date(serverItem.updatedAt || 0).getTime();
+                const localDate = new Date(localItem.updatedAt || 0).getTime();
+                if (Math.abs(serverDate - localDate) > 1000) { // Conflict
+                    newConflicts.push({ local: localItem, server: serverItem });
+                    // Keep local version for now until resolved by user
+                    mergedMap.set(localItem.id, localItem);
+                } else {
+                    // No conflict, versions are same or close enough
+                    mergedMap.set(serverItem.id, serverItem);
+                }
+            }
+        } else {
+            // Item is only on server, so add it
+            mergedMap.set(serverItem.id, serverItem);
+        }
+    }
+    
+    // Add local-only items (newly created or that failed to sync before)
+    for (const localItem of localData) {
+        if (!serverMap.has(localItem.id)) {
+            mergedMap.set(localItem.id, localItem);
+        }
+    }
+
+    return { mergedData: Array.from(mergedMap.values()), newConflicts };
+};
 
 const App: React.FC = () => {
     const { addNotification } = useNotifier();
+
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [calculations, setCalculations] = useState<Calculation[]>([]); // New state for calculations
+    const [calculations, setCalculations] = useState<Calculation[]>([]);
+    const [reminders, setReminders] = useState<Reminder[]>([]);
+    
+    const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(true);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [prefilledData, setPrefilledData] = useState<Partial<Transaction> | null>(null);
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
-    const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isEditMode, setIsEditMode] = useState(false);
-
-    // Sync states
-    const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
-    const [unsyncedCount, setUnsyncedCount] = useState<number>(0);
-    const [isSyncing, setIsSyncing] = useState<boolean>(false);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isSupabaseConfigured] = useState<boolean>(!!supabase);
-    const [unsyncedIds, setUnsyncedIds] = useState<Set<string>>(new Set());
-    const [conflicts, setConflicts] = useState<{ local: Transaction, server: Transaction }[]>([]);
-    const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>([]);
-
-    // Reminder and Notification states
-    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(Notification.permission);
-    const [reminders, setReminders] = useState<Reminder[]>([]);
-    const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
     const [transactionForReminder, setTransactionForReminder] = useState<Transaction | null>(null);
+    const [conflicts, setConflicts] = useState<{ local: Transaction; server: Transaction }[]>([]);
+    
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const isSupabaseConfigured = !!supabase;
+    const syncLock = useRef(false);
+    const [queueVersion, setQueueVersion] = useState(0); // Used to trigger re-renders for unsyncedCount
 
-    // Settings state
-    const [settings, setSettings] = useState<Settings>({
-        soundEnabled: true,
-        theme: 'green',
-    });
-
-    const toggleEditMode = () => {
-        setIsEditMode(prev => {
-            addNotification(`Edit mode ${!prev ? 'enabled' : 'disabled'}.`, 'info');
-            return !prev;
-        });
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'today' });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>(['paid', 'unpaid', 'partial']);
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' }>({ key: 'date', direction: 'descending' });
+    
+    const [settings, setSettings] = useState<Settings>({ soundEnabled: true, theme: 'green' });
+    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+        'Notification' in window ? Notification.permission : 'default'
+    );
+    
+    const setQueue = <T,>(key: string, data: T[]) => {
+        localStorage.setItem(key, JSON.stringify(data));
+        setQueueVersion(v => v + 1);
     };
+
+    const unsyncedCount = useMemo(() => {
+        const tCreates = getQueue<Transaction>(SYNC_QUEUES.CREATES).length;
+        const tUpdates = getQueue<Transaction>(SYNC_QUEUES.UPDATES).length;
+        const tDeletes = getQueue<string>(SYNC_QUEUES.DELETES).length;
+        const cCreates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES).length;
+        const cUpdates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES).length;
+        const cDeletes = getQueue<string>(CALC_SYNC_QUEUES.DELETES).length;
+        return tCreates + tUpdates + tDeletes + cCreates + cUpdates + cDeletes;
+    }, [queueVersion]);
+
+    const unsyncedTransactionIds = useMemo(() => {
+        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        return new Set([...creates.map(t => t.id), ...updates.map(t => t.id)]);
+    }, [queueVersion]);
 
     useEffect(() => {
-        const savedSettings = localStorage.getItem('app-settings');
-        if (savedSettings) {
-             try {
-                const parsed = JSON.parse(savedSettings);
-                if (typeof parsed === 'object' && parsed !== null) {
-                    const loadedSettings: Settings = {
-                        soundEnabled: parsed.soundEnabled ?? true,
-                        theme: parsed.theme ?? 'green'
-                    };
-                    setSettings(loadedSettings);
-                    document.documentElement.className = `theme-${loadedSettings.theme}`;
-                }
-            } catch (error) {
-                console.error("Failed to parse settings from cache:", error);
-                localStorage.removeItem('app-settings');
-            }
+        const loader = document.getElementById('app-loader');
+        if (loader) {
+            const hideLoader = () => {
+                loader.classList.add('fade-out');
+                setTimeout(() => loader.remove(), 500);
+            };
+            window.addEventListener('typingAnimationComplete', () => setTimeout(hideLoader, 250), { once: true });
         }
     }, []);
 
-    const handleSaveSettings = (newSettings: Settings) => {
-        setSettings(newSettings);
-        document.documentElement.className = `theme-${newSettings.theme}`;
-        localStorage.setItem('app-settings', JSON.stringify(newSettings));
-        addNotification('Settings saved!', 'success');
-    };
+    const syncData = useCallback(async () => {
+        if (!isOnline || !isSupabaseConfigured || syncLock.current) return;
 
-    const checkUnsyncedChanges = useCallback(() => {
-        const txCreates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        const txUpdates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
-        const txDeletes = getQueue<string>(SYNC_QUEUES.DELETES);
-        const calcCreates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
-        const calcUpdates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES);
-        const calcDeletes = getQueue<string>(CALC_SYNC_QUEUES.DELETES);
+        syncLock.current = true;
+        setIsSyncing(true);
+        addNotification('Syncing data...', 'info');
 
-        setUnsyncedCount(txCreates.length + txUpdates.length + txDeletes.length + calcCreates.length + calcUpdates.length + calcDeletes.length);
-        setUnsyncedIds(new Set([...txCreates.map(t => t.id), ...txUpdates.map(t => t.id)]));
-    }, []);
-
-    const setQueue = useCallback(<T,>(key: string, queue: T[]) => {
-        localStorage.setItem(key, JSON.stringify(queue));
-        checkUnsyncedChanges();
-    }, [checkUnsyncedChanges]);
-    
-    const clearQueues = useCallback(() => {
-        Object.values(SYNC_QUEUES).forEach(key => localStorage.removeItem(key));
-        Object.values(CALC_SYNC_QUEUES).forEach(key => localStorage.removeItem(key));
-        checkUnsyncedChanges();
-    }, [checkUnsyncedChanges]);
-
-    const loadFromCache = useCallback(() => {
-        // Load Transactions
-        const savedTxs = localStorage.getItem('transactions');
-        if (savedTxs) {
-            try {
-                setTransactions(JSON.parse(savedTxs));
-            } catch (e) {
-                console.error("Failed to parse transactions from cache", e);
-                localStorage.removeItem('transactions');
-            }
-        }
-        // Load Calculations
-        const savedCalcs = localStorage.getItem('calculations');
-        if (savedCalcs) {
-            try {
-                setCalculations(JSON.parse(savedCalcs));
-            } catch (e) {
-                console.error("Failed to parse calculations from cache", e);
-                localStorage.removeItem('calculations');
-            }
-        }
-    }, []);
-
-    const fetchFromServerAndCache = useCallback(async () => {
-        if (!isOnline || !isSupabaseConfigured) {
-            if (!isSupabaseConfigured && isOnline) {
-                addNotification('Supabase not configured. Working in offline mode.', 'info');
-            }
-            return;
-        }
+        const tUpdatesForConflictCheck = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
 
         try {
-            // Fetch Transactions
-            const { data: txData, error: txError } = await supabase!.from('transactions').select('*').order('date', { ascending: false });
-            if (txError) throw txError;
-            const mappedTxs = txData.map(fromSupabase);
-            setTransactions(mappedTxs);
-            localStorage.setItem('transactions', JSON.stringify(mappedTxs));
+            // --- Step 1: PUSH LOCAL CHANGES ---
+            const tDeletes = getQueue<string>(SYNC_QUEUES.DELETES);
+            if (tDeletes.length > 0) {
+                const { error } = await supabase.from('transactions').delete().in('id', tDeletes);
+                if (error) throw error;
+            }
 
-            // Fetch Calculations
-            const { data: calcData, error: calcError } = await supabase!.from('calculations').select('*').order('created_at', { ascending: false });
-            if (calcError) throw calcError;
-            const mappedCalcs = calcData.map(fromSupabaseCalc);
-            setCalculations(mappedCalcs);
-            localStorage.setItem('calculations', JSON.stringify(mappedCalcs));
+            const tCreates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+            if (tCreates.length > 0) {
+                const { error } = await supabase.from('transactions').upsert(tCreates.map(toSupabase));
+                if (error) throw error;
+            }
+
+            const tUpdates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+            if (tUpdates.length > 0) {
+                const { error } = await supabase.from('transactions').upsert(tUpdates.map(toSupabase));
+                if (error) throw error;
+            }
+
+            const cDeletes = getQueue<string>(CALC_SYNC_QUEUES.DELETES);
+            if (cDeletes.length > 0) {
+                const { error } = await supabase.from('calculations').delete().in('id', cDeletes);
+                if (error) throw error;
+            }
+
+            const cCreates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
+            if (cCreates.length > 0) {
+                 const { error } = await supabase.from('calculations').upsert(cCreates.map(toSupabaseCalc));
+                if (error) throw error;
+            }
+
+            const cUpdates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES);
+            if (cUpdates.length > 0) {
+                const { error } = await supabase.from('calculations').upsert(cUpdates.map(toSupabaseCalc));
+                if (error) throw error;
+            }
+
+            // --- Step 2: Clear queues on successful push ---
+            setQueue<string>(SYNC_QUEUES.DELETES, []);
+            setQueue<Transaction>(SYNC_QUEUES.CREATES, []);
+            setQueue<Transaction>(SYNC_QUEUES.UPDATES, []);
+            setQueue<string>(CALC_SYNC_QUEUES.DELETES, []);
+            setQueue<Calculation>(CALC_SYNC_QUEUES.CREATES, []);
+            setQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES, []);
+
+            // --- Step 3: PULL & MERGE SERVER CHANGES ---
+            const [
+                { data: serverTransactionsData, error: tError },
+                { data: serverCalculationsData, error: cError }
+            ] = await Promise.all([
+                supabase.from('transactions').select('*'),
+                supabase.from('calculations').select('*')
+            ]);
+            
+            if (tError) throw tError;
+            if (cError) throw cError;
+
+            // Merge Transactions
+            const serverTransactions = serverTransactionsData.map(fromSupabase);
+            const currentLocalTransactions = getQueue<Transaction>('transactions');
+            const { mergedData: finalTransactions, newConflicts } = mergeData(
+                currentLocalTransactions, 
+                serverTransactions,
+                new Set(tUpdatesForConflictCheck.map(t => t.id))
+            );
+
+            setTransactions(finalTransactions);
+            localStorage.setItem('transactions', JSON.stringify(finalTransactions));
+
+            // For calculations, we'll do a simple overwrite for now
+            const serverCalculations = serverCalculationsData.map(fromSupabaseCalc);
+            setCalculations(serverCalculations);
+            localStorage.setItem('calculations', JSON.stringify(serverCalculations));
+
+            if (newConflicts.length > 0) {
+                setConflicts(prev => [...prev, ...newConflicts]);
+                addNotification(`${newConflicts.length} sync conflicts found. Please resolve them.`, 'error');
+            } else {
+                addNotification('Sync complete!', 'success');
+            }
 
         } catch (error: any) {
-            console.error("Error fetching from Supabase, working with cached data:", error.message || error);
-            addNotification(`Failed to fetch latest data: ${error.message}. Displaying cached version.`, 'error');
+            console.error("Sync failed:", error);
+            const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+            addNotification(`Sync failed: ${errorMessage}`, 'error');
+        } finally {
+            setIsSyncing(false);
+            syncLock.current = false;
         }
     }, [isOnline, isSupabaseConfigured, addNotification]);
     
-    // Main effect for app initialization
     useEffect(() => {
-        // Step 1: Load from cache to render UI immediately behind the loader
-        loadFromCache();
-
-        // Prepare promises for loader animations and minimum display time
-        const typingPromise = new Promise<void>(resolve => {
-            const timeout = setTimeout(() => resolve(), 6000); // Failsafe
-            window.addEventListener('typingAnimationComplete', () => {
-                clearTimeout(timeout);
-                resolve();
-            }, { once: true });
-        });
-        const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 5000));
-
-        Promise.all([typingPromise, timeoutPromise]).then(() => {
-            setIsLoading(false); // Hide loader after animations and delay
-        });
-
-        // Step 2: Fetch latest data from server in the background
-        fetchFromServerAndCache();
+        const localTransactions = getQueue<Transaction>('transactions');
+        const localCalculations = getQueue<Calculation>('calculations');
+        const localReminders = getQueue<Reminder>('reminders');
+        const localSettings = localStorage.getItem('settings');
         
-        // The rest of the setup
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
+        if(localTransactions.length > 0) setTransactions(localTransactions);
+        if(localCalculations.length > 0) setCalculations(localCalculations);
+        if(localReminders.length > 0) setReminders(localReminders);
+        if (localSettings) {
+             const parsedSettings = JSON.parse(localSettings);
+             setSettings(parsedSettings);
+             document.documentElement.className = `theme-${parsedSettings.theme}`;
+        } else {
+             document.documentElement.className = `theme-green`;
+        }
+
+        if (isOnline && isSupabaseConfigured) {
+            syncData();
+        }
+
+        const handleOnline = () => { setIsOnline(true); addNotification('Back online!', 'success'); syncData(); };
+        const handleOffline = () => { setIsOnline(false); addNotification('You are offline.', 'info'); };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
-
-        checkUnsyncedChanges();
-
-        const savedReminders = localStorage.getItem('reminders');
-        if (savedReminders) {
-            try {
-                const parsed = JSON.parse(savedReminders);
-                if (Array.isArray(parsed)) {
-                    setReminders(parsed);
-                }
-            } catch (error) {
-                console.error("Failed to parse reminders from cache:", error);
-                localStorage.removeItem('reminders');
-            }
-        }
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, [loadFromCache, fetchFromServerAndCache, checkUnsyncedChanges]);
+    }, [isSupabaseConfigured, syncData]);
 
-
-    // Effect to remove the HTML loader from the DOM
-    useEffect(() => {
-        if (!isLoading) {
-            const loader = document.getElementById('app-loader');
-            if (loader) {
-                loader.classList.add('fade-out');
-                setTimeout(() => {
-                    loader.remove();
-                }, 500); // Match CSS animation duration
-            }
-        }
-    }, [isLoading]);
-
-
-    // Real-time Supabase subscription
-    useEffect(() => {
-        if (!isSupabaseConfigured) return;
-
-        const txChannel = supabase!.channel('public:transactions')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, payload => {
-            console.log('Real-time change received (transactions):', payload);
-            setTransactions(currentTxs => {
-                const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-                const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
-                let newTxs = currentTxs;
-                if (payload.eventType === 'INSERT') {
-                    const newTx = fromSupabase(payload.new);
-                    if (!creates.some(t => t.id === newTx.id) && !currentTxs.some(t => t.id === newTx.id)) {
-                        newTxs = [newTx, ...currentTxs];
-                    }
-                } else if (payload.eventType === 'UPDATE') {
-                    const updatedTx = fromSupabase(payload.new);
-                    if (!updates.some(t => t.id === updatedTx.id)) {
-                        newTxs = currentTxs.map(t => t.id === updatedTx.id ? updatedTx : t);
-                    }
-                } else if (payload.eventType === 'DELETE') {
-                    newTxs = currentTxs.filter(t => t.id !== payload.old.id);
-                }
-                if (newTxs !== currentTxs) localStorage.setItem('transactions', JSON.stringify(newTxs));
-                return newTxs;
-            });
-          }).subscribe();
-
-        const calcChannel = supabase!.channel('public:calculations')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'calculations' }, payload => {
-            console.log('Real-time change received (calculations):', payload);
-             setCalculations(currentCalcs => {
-                const creates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
-                const updates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES);
-                let newCalcs = currentCalcs;
-                if (payload.eventType === 'INSERT') {
-                    const newCalc = fromSupabaseCalc(payload.new);
-                    if (!creates.some(c => c.id === newCalc.id) && !currentCalcs.some(c => c.id === newCalc.id)) {
-                        newCalcs = [newCalc, ...currentCalcs];
-                    }
-                } else if (payload.eventType === 'UPDATE') {
-                    const updatedCalc = fromSupabaseCalc(payload.new);
-                    if (!updates.some(c => c.id === updatedCalc.id)) {
-                        newCalcs = currentCalcs.map(c => c.id === updatedCalc.id ? updatedCalc : c);
-                    }
-                } else if (payload.eventType === 'DELETE') {
-                    newCalcs = currentCalcs.filter(c => c.id !== payload.old.id);
-                }
-                if (newCalcs !== currentCalcs) localStorage.setItem('calculations', JSON.stringify(newCalcs));
-                return newCalcs;
-            });
-          }).subscribe();
-
-        return () => {
-          supabase!.removeChannel(txChannel);
-          supabase!.removeChannel(calcChannel);
-        };
-    }, [isSupabaseConfigured]);
-    
-    const handleSync = useCallback(async () => {
-        if (!isOnline || isSyncing || !isSupabaseConfigured) return;
-        
-        setIsSyncing(true);
-        addNotification('Syncing offline changes...', 'info');
-
-        // Get all queues
-        const txCreates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        const txUpdates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
-        const txDeletes = getQueue<string>(SYNC_QUEUES.DELETES);
-        const calcCreates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
-        const calcUpdates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES);
-        const calcDeletes = getQueue<string>(CALC_SYNC_QUEUES.DELETES);
-        
-        let hadErrors = false;
-        
-        try {
-            // Process Transactions
-            if (txDeletes.length > 0) await supabase!.from('transactions').delete().in('id', txDeletes);
-            if (txCreates.length > 0) await supabase!.from('transactions').insert(txCreates.map(toSupabase));
-            // Simplified update without conflict resolution for now
-            if (txUpdates.length > 0) await supabase!.from('transactions').upsert(txUpdates.map(toSupabase));
-
-            // Process Calculations
-            if (calcDeletes.length > 0) await supabase!.from('calculations').delete().in('id', calcDeletes);
-            if (calcCreates.length > 0) await supabase!.from('calculations').insert(calcCreates.map(toSupabaseCalc));
-            if (calcUpdates.length > 0) await supabase!.from('calculations').upsert(calcUpdates.map(toSupabaseCalc));
-
-            clearQueues();
-            addNotification('Sync successful!', 'success');
-
-        } catch (error: any) {
-            hadErrors = true;
-            console.error("Sync error:", error.message || error);
-            addNotification(`Sync failed. Some changes could not be saved. Error: ${error.message}`, 'error');
-        }
-        
-        await fetchFromServerAndCache();
-        setIsSyncing(false);
-    }, [isOnline, isSyncing, fetchFromServerAndCache, clearQueues, addNotification, isSupabaseConfigured, setQueue]);
-
-    const handleResolveConflict = async (chosenVersion: Transaction, choice: 'local' | 'server') => {
-        const conflict = conflicts.find(c => c.local.id === chosenVersion.id || c.server.id === chosenVersion.id);
-        if (!conflict) return;
-    
-        if (choice === 'local') {
-            addNotification(`Overwriting server with your version for ${chosenVersion.customerName}...`, 'info');
-            const { error } = await supabase!.from('transactions').upsert(toSupabase(chosenVersion));
-            if (error) {
-                addNotification(`Failed to save your version: ${error.message}`, 'error');
-                return; 
-            }
-            addNotification('Your version was saved to the server.', 'success');
-        } else { // 'server'
-            addNotification(`Keeping server version for ${chosenVersion.customerName}. Your offline changes are discarded.`, 'success');
-        }
-        
-        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
-        setQueue(SYNC_QUEUES.UPDATES, updates.filter(t => t.id !== chosenVersion.id));
-        setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
-        
-        await fetchFromServerAndCache();
-    };
-
-    useEffect(() => {
-        if (isOnline && unsyncedCount > 0 && !isSyncing) {
-            handleSync();
-        }
-    }, [isOnline, unsyncedCount, isSyncing, handleSync]);
-
-    // Reminder and notification permission logic
-    const requestNotificationPermission = async () => {
-        if (!('Notification' in window)) {
-            addNotification('This browser does not support desktop notifications.', 'error');
-            return;
-        }
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        if (permission === 'granted') {
-            addNotification('Notifications enabled!', 'success');
-             new Notification('Chakki Hisab Notifications', {
-                body: 'You will now receive reminders and alerts.',
-            });
-        } else {
-            addNotification('Notifications were not enabled. You can change this in your browser settings.', 'info');
-        }
-    };
-    
-    // Periodically check permission status in case user changes it in browser settings
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (Notification.permission !== notificationPermission) {
-                setNotificationPermission(Notification.permission);
-            }
-        }, 3000);
-        return () => clearInterval(interval);
-    }, [notificationPermission]);
-
-    // Save reminders to localStorage
-    useEffect(() => {
-        localStorage.setItem('reminders', JSON.stringify(reminders));
-    }, [reminders]);
-
-    // Check for due reminders every minute
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = new Date();
-            const dueReminders = reminders.filter(r => new Date(r.remindAt) <= now);
-
-            if (dueReminders.length > 0) {
-                dueReminders.forEach(reminder => {
-                    const transaction = transactions.find(t => t.id === reminder.transactionId);
-                    if (transaction && transaction.paymentStatus !== 'paid') {
-                        const balanceDue = transaction.total - (transaction.paidAmount || 0);
-                        const notificationBody = `Reminder: ${transaction.customerName} has an outstanding balance of ${formatCurrency(balanceDue)}.`;
-                        
-                        const triggerNotification = (attempt: number) => {
-                            if (notificationPermission === 'granted') {
-                                new Notification('Transaction Reminder', {
-                                    body: notificationBody,
-                                    tag: `${transaction.id}-${attempt}`,
-                                });
-                            } else {
-                                addNotification(notificationBody, 'info');
-                            }
-
-                            if (settings.soundEnabled) {
-                                playNotificationSound();
-                            }
-                        };
-                        triggerNotification(1);
-                        setTimeout(() => triggerNotification(2), 30000);
-                    }
-                });
-                const dueReminderIds = new Set(dueReminders.map(r => r.id));
-                setReminders(prev => prev.filter(r => !dueReminderIds.has(r.id)));
-            }
-        }, 60000);
-        
-        return () => clearInterval(interval);
-    }, [reminders, transactions, notificationPermission, addNotification, settings.soundEnabled]);
-
-
-    const handleOpenReminderModal = (transaction: Transaction) => {
-        setTransactionForReminder(transaction);
-        setIsReminderModalOpen(true);
-    };
-
-    const handleSetReminder = (transactionId: string, remindAt: Date) => {
-        const newReminder: Reminder = {
-            id: crypto.randomUUID(),
-            transactionId,
-            remindAt: remindAt.toISOString(),
-        };
-        setReminders(prev => [...prev.filter(r => r.transactionId !== transactionId), newReminder]);
-        addNotification('Reminder set successfully!', 'success');
-        setIsReminderModalOpen(false);
-    };
-
-    const handleBulkSetReminders = (transactionIds: string[], remindAt: Date) => {
-        const newReminders = transactionIds.map(id => ({
-            id: crypto.randomUUID(),
-            transactionId: id,
-            remindAt: remindAt.toISOString(),
-        }));
-        setReminders(prev => [
-            ...prev.filter(r => !transactionIds.includes(r.transactionId)),
-            ...newReminders,
-        ]);
-        addNotification(`${transactionIds.length} reminders set successfully!`, 'success');
-        setIsReminderModalOpen(false);
-    };
-    
-    const dateFilteredTransactions = useMemo(() => {
-        const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const now = new Date();
-        const { period, startDate, endDate } = timeFilter;
-        if (period === 'all') return sorted;
-        if (period === 'custom') {
-             if (!startDate || !endDate) return [];
-            const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
-            return sorted.filter(t => {
-                const transactionDate = new Date(t.date);
-                return transactionDate >= start && transactionDate <= end;
-            });
-        }
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (period === 'today') {
-            return sorted.filter(t => {
-                const transactionDate = new Date(t.date);
-                return transactionDate >= today && transactionDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-            });
-        }
-        if (period === 'week') {
-            const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - today.getDay());
-            return sorted.filter(t => new Date(t.date) >= startOfWeek);
-        }
-        if (period === 'month') {
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            return sorted.filter(t => new Date(t.date) >= startOfMonth);
-        }
-        return sorted;
-    }, [transactions, timeFilter]);
-
-    const filteredTransactions = useMemo(() => {
-        let result = dateFilteredTransactions;
-
-        if (statusFilter.length > 0) {
-            result = result.filter(transaction => statusFilter.includes(transaction.paymentStatus));
-        }
-
-        if (!searchQuery) return result;
-        
-        const lowercasedQuery = searchQuery.toLowerCase();
-        return result.filter(transaction =>
-            transaction.customerName.toLowerCase().includes(lowercasedQuery) ||
-            transaction.item.toLowerCase().includes(lowercasedQuery)
-        );
-    }, [dateFilteredTransactions, searchQuery, statusFilter]);
-
-
-    const handleAddTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'updatedAt'>) => {
-        const newTransaction: Transaction = {
-            ...transaction,
-            id: crypto.randomUUID(),
-        };
-        const newTransactions = [newTransaction, ...transactions];
+    const addTransaction = (data: Omit<Transaction, 'id' | 'updatedAt'>) => {
+        const newTransaction: Transaction = { ...data, id: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+        const newTransactions = [...transactions, newTransaction];
         setTransactions(newTransactions);
         localStorage.setItem('transactions', JSON.stringify(newTransactions));
-        setIsModalOpen(false);
-        addNotification(`Transaction for ${transaction.customerName} added!`, 'success');
+        
+        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
+        setQueue<Transaction>(SYNC_QUEUES.CREATES, [...creates, newTransaction]);
+        
+        addNotification('Transaction added successfully!', 'success');
+        if (settings.soundEnabled) playNotificationSound();
+        if (isOnline) syncData();
+        closeModal();
+    };
 
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                const { error } = await supabase!.from('transactions').insert(toSupabase(newTransaction));
-                if (error) throw error;
-            } catch (error: any) {
-                addNotification('Network error. Transaction saved for offline sync.', 'info');
-                setQueue(SYNC_QUEUES.CREATES, [...getQueue<Transaction>(SYNC_QUEUES.CREATES), newTransaction]);
-            }
-        } else {
-            setQueue(SYNC_QUEUES.CREATES, [...getQueue<Transaction>(SYNC_QUEUES.CREATES), newTransaction]);
-        }
-    }, [isOnline, transactions, setQueue, addNotification, isSupabaseConfigured]);
-
-    const handleUpdateTransaction = useCallback(async (updatedTransaction: Transaction) => {
-        const newTransactions = transactions.map(t => t.id === updatedTransaction.id ? updatedTransaction : t);
+    const updateTransaction = (updatedTransaction: Transaction) => {
+        const finalTransaction = { ...updatedTransaction, updatedAt: new Date().toISOString() };
+        const newTransactions = transactions.map(t => t.id === finalTransaction.id ? finalTransaction : t);
         setTransactions(newTransactions);
         localStorage.setItem('transactions', JSON.stringify(newTransactions));
-        setEditingTransaction(null);
-        setIsModalOpen(false);
-        addNotification(`Transaction for ${updatedTransaction.customerName} updated!`, 'success');
-
-        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        if (creates.some(t => t.id === updatedTransaction.id)) {
-            setQueue(SYNC_QUEUES.CREATES, creates.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
-            return;
-        }
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                await supabase!.from('transactions').update(toSupabase(updatedTransaction)).eq('id', updatedTransaction.id);
-            } catch (error) {
-                addNotification('Network error. Update saved for offline sync.', 'info');
-                setQueue(SYNC_QUEUES.UPDATES, [...getQueue<Transaction>(SYNC_QUEUES.UPDATES), updatedTransaction]);
-            }
-        } else {
-             setQueue(SYNC_QUEUES.UPDATES, [...getQueue<Transaction>(SYNC_QUEUES.UPDATES), updatedTransaction]);
-        }
-    }, [isOnline, transactions, setQueue, addNotification, isSupabaseConfigured]);
-    
-    const openDeleteModal = (id: string) => setDeletingTransactionId(id);
-    const closeDeleteModal = () => setDeletingTransactionId(null);
-
-    const handleDeleteTransaction = useCallback(async () => {
-        if (!deletingTransactionId) return;
-        const idToDelete = deletingTransactionId;
         
-        setTransactions(prev => prev.filter(t => t.id !== idToDelete));
-        localStorage.setItem('transactions', JSON.stringify(transactions.filter(t => t.id !== idToDelete)));
-        addNotification(`Transaction deleted!`, 'success');
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES).filter(t => t.id !== finalTransaction.id);
+        setQueue<Transaction>(SYNC_QUEUES.UPDATES, [...updates, finalTransaction]);
+
+        addNotification('Transaction updated.', 'info');
+        if (isOnline) syncData();
+        closeModal();
+    };
+
+    const deleteTransaction = (id: string) => {
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        localStorage.setItem('transactions', JSON.stringify(transactions.filter(t => t.id !== id)));
         
-        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        if (creates.some(t => t.id === idToDelete)) {
-            setQueue(SYNC_QUEUES.CREATES, creates.filter(t => t.id !== idToDelete));
-        } else {
-            setQueue(SYNC_QUEUES.DELETES, [...getQueue<string>(SYNC_QUEUES.DELETES), idToDelete]);
-        }
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                await supabase!.from('transactions').delete().eq('id', idToDelete);
-            } catch (error) {
-                addNotification('Network error. Deletion saved for offline sync.', 'info');
-            }
-        }
-        setDeletingTransactionId(null);
-    }, [isOnline, transactions, deletingTransactionId, setQueue, addNotification, isSupabaseConfigured]);
-
-    // Calculation Handlers
-    const handleAddCalculation = useCallback(async (calculation: Omit<Calculation, 'id' | 'createdAt' | 'updatedAt'>) => {
-        const newCalculation: Calculation = {
-            ...calculation,
-            id: crypto.randomUUID(),
-            createdAt: new Date().toISOString(),
-        };
-        const newCalculations = [newCalculation, ...calculations];
-        setCalculations(newCalculations);
-        localStorage.setItem('calculations', JSON.stringify(newCalculations));
-        addNotification(`Calculation for ${calculation.customerName} saved!`, 'success');
-        
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                await supabase!.from('calculations').insert(toSupabaseCalc(newCalculation));
-            } catch (error) {
-                addNotification('Network error. Calculation saved for offline sync.', 'info');
-                setQueue(CALC_SYNC_QUEUES.CREATES, [...getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES), newCalculation]);
-            }
-        } else {
-            setQueue(CALC_SYNC_QUEUES.CREATES, [...getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES), newCalculation]);
-        }
-    }, [isOnline, calculations, setQueue, addNotification, isSupabaseConfigured]);
-
-    const handleUpdateCalculation = useCallback(async (updatedCalculation: Calculation) => {
-        const newCalculations = calculations.map(c => c.id === updatedCalculation.id ? updatedCalculation : c);
-        setCalculations(newCalculations);
-        localStorage.setItem('calculations', JSON.stringify(newCalculations));
-        addNotification(`Calculation for ${updatedCalculation.customerName} updated!`, 'success');
-
-        const creates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
-        if (creates.some(c => c.id === updatedCalculation.id)) {
-            setQueue(CALC_SYNC_QUEUES.CREATES, creates.map(c => c.id === updatedCalculation.id ? updatedCalculation : c));
-            return;
-        }
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                await supabase!.from('calculations').update(toSupabaseCalc(updatedCalculation)).eq('id', updatedCalculation.id);
-            } catch (error) {
-                addNotification('Network error. Calculation update saved for offline sync.', 'info');
-                setQueue(CALC_SYNC_QUEUES.UPDATES, [...getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES), updatedCalculation]);
-            }
-        } else {
-            setQueue(CALC_SYNC_QUEUES.UPDATES, [...getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES), updatedCalculation]);
-        }
-    }, [isOnline, calculations, setQueue, addNotification, isSupabaseConfigured]);
-
-    const handleDeleteCalculation = useCallback(async (idToDelete: string) => {
-        setCalculations(prev => prev.filter(c => c.id !== idToDelete));
-        localStorage.setItem('calculations', JSON.stringify(calculations.filter(c => c.id !== idToDelete)));
-        addNotification(`Calculation deleted!`, 'success');
-
-        const creates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
-        if (creates.some(c => c.id === idToDelete)) {
-            setQueue(CALC_SYNC_QUEUES.CREATES, creates.filter(c => c.id !== idToDelete));
-        } else {
-            setQueue(CALC_SYNC_QUEUES.DELETES, [...getQueue<string>(CALC_SYNC_QUEUES.DELETES), idToDelete]);
-        }
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                await supabase!.from('calculations').delete().eq('id', idToDelete);
-            } catch (error) {
-                 addNotification('Network error. Deletion saved for offline sync.', 'info');
-            }
-        }
-    }, [isOnline, calculations, setQueue, addNotification, isSupabaseConfigured]);
-
-
-    const handleBulkDelete = useCallback(async (idsToDelete: string[]) => {
-        const newTransactions = transactions.filter(t => !idsToDelete.includes(t.id));
-        setTransactions(newTransactions);
-        localStorage.setItem('transactions', JSON.stringify(newTransactions));
-        addNotification(`${idsToDelete.length} transactions deleted!`, 'success');
-
-        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
         const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
-
-        const finalCreates = creates.filter(t => !idsToDelete.includes(t.id));
-        const finalUpdates = updates.filter(t => !idsToDelete.includes(t.id));
-        const finalDeletes = [...deletes, ...idsToDelete.filter(id => !creates.some(c => c.id === id))];
-        
-        setQueue(SYNC_QUEUES.CREATES, finalCreates);
-        setQueue(SYNC_QUEUES.UPDATES, finalUpdates);
-        setQueue(SYNC_QUEUES.DELETES, Array.from(new Set(finalDeletes))); // Ensure uniqueness
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                const { error } = await supabase!.from('transactions').delete().in('id', idsToDelete);
-                if (error) throw error;
-            } catch (error: any) {
-                 addNotification('Network error. Deletions saved for offline sync.', 'info');
-            }
+        if (!deletes.includes(id)) {
+            setQueue<string>(SYNC_QUEUES.DELETES, [...deletes, id]);
         }
-    }, [transactions, setQueue, addNotification, isOnline, isSupabaseConfigured]);
 
-    const handleBulkUpdate = useCallback(async (idsToUpdate: string[], newStatus: Transaction['paymentStatus']) => {
-        const updatedTransactions = transactions.map(t => {
-            if (idsToUpdate.includes(t.id)) {
-                let paidAmount = t.paidAmount;
-                if (newStatus === 'paid') {
-                    paidAmount = t.total;
-                } else if (newStatus === 'unpaid') {
-                    paidAmount = 0;
-                }
-                return { ...t, paymentStatus: newStatus, paidAmount };
+        addNotification('Transaction deleted.', 'error');
+        if (isOnline) syncData();
+        setTransactionToDelete(null);
+    };
+
+    const addCalculation = (data: Omit<Calculation, 'id' | 'createdAt' | 'updatedAt'>) => {
+        const now = new Date().toISOString();
+        const newCalc: Calculation = { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+        const newCalcs = [...calculations, newCalc];
+        setCalculations(newCalcs);
+        localStorage.setItem('calculations', JSON.stringify(newCalcs));
+        
+        const creates = getQueue<Calculation>(CALC_SYNC_QUEUES.CREATES);
+        setQueue(CALC_SYNC_QUEUES.CREATES, [...creates, newCalc]);
+        
+        addNotification('Calculation saved!', 'success');
+        if (settings.soundEnabled) playNotificationSound();
+        if (isOnline) syncData();
+    };
+
+    const updateCalculation = (updatedCalc: Calculation) => {
+        const finalCalc = { ...updatedCalc, updatedAt: new Date().toISOString() };
+        const newCalcs = calculations.map(c => c.id === finalCalc.id ? finalCalc : c);
+        setCalculations(newCalcs);
+        localStorage.setItem('calculations', JSON.stringify(newCalcs));
+
+        const updates = getQueue<Calculation>(CALC_SYNC_QUEUES.UPDATES).filter(c => c.id !== finalCalc.id);
+        setQueue(CALC_SYNC_QUEUES.UPDATES, [...updates, finalCalc]);
+
+        addNotification('Calculation updated.', 'info');
+        if (isOnline) syncData();
+    };
+
+    const deleteCalculation = (id: string) => {
+        setCalculations(prev => prev.filter(c => c.id !== id));
+        localStorage.setItem('calculations', JSON.stringify(calculations.filter(c => c.id !== id)));
+
+        const deletes = getQueue<string>(CALC_SYNC_QUEUES.DELETES);
+        if (!deletes.includes(id)) {
+            setQueue(CALC_SYNC_QUEUES.DELETES, [...deletes, id]);
+        }
+        addNotification('Calculation deleted.', 'error');
+        if(isOnline) syncData();
+    };
+    
+    const handleSetReminder = (transactionId: string, remindAt: Date) => {
+        const newReminder: Reminder = { id: crypto.randomUUID(), transactionId, remindAt: remindAt.toISOString() };
+        const newReminders = [...reminders.filter(r => r.transactionId !== transactionId), newReminder];
+        setReminders(newReminders);
+        localStorage.setItem('reminders', JSON.stringify(newReminders));
+        addNotification('Reminder set!', 'success');
+        setTransactionForReminder(null);
+    };
+
+    const onBulkDelete = (ids: string[]) => {
+        setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+        localStorage.setItem('transactions', JSON.stringify(transactions.filter(t => !ids.includes(t.id))));
+        const deletes = getQueue<string>(SYNC_QUEUES.DELETES);
+        setQueue<string>(SYNC_QUEUES.DELETES, [...new Set([...deletes, ...ids])]);
+        addNotification(`${ids.length} transactions deleted.`, 'error');
+        if(isOnline) syncData();
+    };
+
+    const onBulkUpdate = (ids: string[], newStatus: Transaction['paymentStatus']) => {
+        let updatedCount = 0;
+        const updatedTransactionsForQueue: Transaction[] = [];
+        const newTransactions = transactions.map(t => {
+            if (ids.includes(t.id)) {
+                updatedCount++;
+                const updatedTransaction: Transaction = {
+                    ...t,
+                    paymentStatus: newStatus,
+                    paidAmount: newStatus === 'paid' ? t.total : (newStatus === 'unpaid' ? 0 : t.paidAmount),
+                    updatedAt: new Date().toISOString()
+                };
+                updatedTransactionsForQueue.push(updatedTransaction);
+                return updatedTransaction;
             }
             return t;
         });
+        setTransactions(newTransactions);
+        localStorage.setItem('transactions', JSON.stringify(newTransactions));
         
-        setTransactions(updatedTransactions);
-        localStorage.setItem('transactions', JSON.stringify(updatedTransactions));
-        addNotification(`${idsToUpdate.length} transactions updated to "${newStatus}"!`, 'success');
+        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES).filter(t => !ids.includes(t.id));
+        setQueue<Transaction>(SYNC_QUEUES.UPDATES, [...updates, ...updatedTransactionsForQueue]);
 
-        const creates = getQueue<Transaction>(SYNC_QUEUES.CREATES);
-        const updates = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        addNotification(`${updatedCount} transactions updated to "${newStatus}".`, 'info');
+        if(isOnline) syncData();
+    };
 
-        const newCreates = creates.map(t => idsToUpdate.includes(t.id) ? updatedTransactions.find(ut => ut.id === t.id)! : t);
-        
-        const updatesFromState = updatedTransactions.filter(t => idsToUpdate.includes(t.id) && !creates.some(c => c.id === t.id));
-        const newUpdates = [...updates.filter(t => !idsToUpdate.includes(t.id)), ...updatesFromState];
-
-        setQueue(SYNC_QUEUES.CREATES, newCreates);
-        setQueue(SYNC_QUEUES.UPDATES, newUpdates);
-
-        if (isOnline && isSupabaseConfigured) {
-            try {
-                const { error } = await supabase!.from('transactions').upsert(updatesFromState.map(toSupabase));
-                if (error) throw error;
-            } catch (error: any) {
-                 addNotification('Network error. Updates saved for offline sync.', 'info');
-            }
+    const onBulkSetReminder = (ids: string[], remindAt: Date) => {
+        const newReminders: Reminder[] = ids.map(id => ({ id: crypto.randomUUID(), transactionId: id, remindAt: remindAt.toISOString() }));
+        const updatedReminders = [...reminders.filter(r => !ids.includes(r.transactionId)), ...newReminders];
+        setReminders(updatedReminders);
+        localStorage.setItem('reminders', JSON.stringify(updatedReminders));
+        addNotification(`Reminders set for ${ids.length} transactions.`, 'success');
+    };
+    
+    const requestNotifications = () => {
+        if ('Notification' in window) {
+            Notification.requestPermission().then(permission => {
+                setNotificationPermission(permission);
+                if (permission === 'granted') {
+                    addNotification('Browser notifications enabled!', 'success');
+                } else if (permission === 'denied') {
+                    addNotification('Browser notifications have been blocked.', 'error');
+                }
+            });
+        } else {
+            addNotification('This browser does not support notifications.', 'info');
         }
-    }, [transactions, setQueue, addNotification, isOnline, isSupabaseConfigured]);
+    };
 
-    const openModal = () => setIsModalOpen(true);
+    const openModal = (transactionToEdit: Transaction | null = null, prefill: Partial<Transaction> | null = null) => {
+        setEditingTransaction(transactionToEdit);
+        setPrefilledData(prefill);
+        setIsModalOpen(true);
+    };
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingTransaction(null);
         setPrefilledData(null);
     };
 
-    const handleEditTransaction = (transaction: Transaction) => {
-        setEditingTransaction(transaction);
-        openModal();
+    const filteredTransactions = useMemo(() => {
+        let startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const filtered = transactions.filter(t => {
+            const transactionDate = new Date(t.date);
+            let isInDateRange = true;
+            if (timeFilter.period === 'today') {
+                isInDateRange = transactionDate >= startOfDay;
+            } else if (timeFilter.period !== 'all') {
+                // Simplified logic, can be expanded
+            }
+
+            const searchMatch = !searchQuery ||
+                t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.item.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            const statusMatch = statusFilter.length === 3 || statusFilter.includes(t.paymentStatus);
+
+            return isInDateRange && searchMatch && statusMatch;
+        });
+
+        return filtered.sort((a, b) => {
+            const dir = sortConfig.direction === 'ascending' ? 1 : -1;
+            switch (sortConfig.key) {
+                case 'date': return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+                case 'total': return (a.total - b.total) * dir;
+                case 'customerName': return a.customerName.localeCompare(b.customerName) * dir;
+                default: return 0;
+            }
+        });
+    }, [transactions, timeFilter, searchQuery, statusFilter, sortConfig]);
+
+    const handleSaveSettings = (newSettings: Settings) => {
+        setSettings(newSettings);
+        localStorage.setItem('settings', JSON.stringify(newSettings));
+        document.documentElement.className = `theme-${newSettings.theme}`;
+        addNotification('Settings saved!', 'success');
     };
 
+    const CurrentPage = () => {
+        switch (currentPage) {
+            case 'dashboard':
+                return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} isEditMode={isEditMode} />;
+            case 'transactions':
+                return <TransactionsPage 
+                            transactions={filteredTransactions}
+                            onEdit={openModal}
+                            onDelete={(id) => setTransactionToDelete(id)}
+                            openModal={() => openModal()}
+                            timeFilter={timeFilter}
+                            setTimeFilter={setTimeFilter}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            statusFilter={statusFilter}
+                            setStatusFilter={setStatusFilter}
+                            unsyncedIds={unsyncedTransactionIds}
+                            onSetReminder={(t) => setTransactionForReminder(t)}
+                            reminders={reminders}
+                            onBulkDelete={onBulkDelete}
+                            onBulkUpdate={onBulkUpdate}
+                            onBulkSetReminder={onBulkSetReminder}
+                            isEditMode={isEditMode}
+                            sortConfig={sortConfig}
+                            setSortConfig={setSortConfig}
+                         />;
+            case 'customers':
+                return <CustomersPage transactions={transactions} />;
+            case 'reports':
+                return <ReportsPage transactions={transactions} />;
+            case 'calculator':
+                return <CalculatorPage 
+                            isEditMode={isEditMode}
+                            calculations={calculations}
+                            onAddCalculation={addCalculation}
+                            onUpdateCalculation={updateCalculation}
+                            onDeleteCalculation={deleteCalculation}
+                        />;
+            case 'settings':
+                return <SettingsPage 
+                            currentSettings={settings}
+                            onSave={handleSaveSettings}
+                            notificationPermission={notificationPermission}
+                            onRequestNotifications={requestNotifications}
+                            isEditMode={isEditMode}
+                        />;
+            default:
+                return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} isEditMode={isEditMode} />;
+        }
+    };
+    
     return (
-        <div className="flex min-h-screen bg-slate-900">
+        <div className="flex h-screen bg-slate-900 text-slate-300 font-sans">
             <Sidebar 
-                isOpen={isSidebarOpen}
-                setIsOpen={setIsSidebarOpen}
-                currentPage={currentPage}
+                isOpen={isSidebarOpen} 
+                setIsOpen={setIsSidebarOpen} 
+                currentPage={currentPage} 
                 setCurrentPage={setCurrentPage}
                 isEditMode={isEditMode}
-                onToggleEditMode={toggleEditMode}
+                onToggleEditMode={() => {
+                    if(isEditMode) addNotification('Edit mode disabled.', 'info');
+                    else addNotification('Edit mode enabled.', 'success');
+                    setIsEditMode(!isEditMode)
+                }}
             />
-            <div className="flex-1 lg:pl-64">
+
+            <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
                 <Header 
-                    onMenuClick={() => setIsSidebarOpen(true)}
+                    onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     isOnline={isOnline}
                     isSyncing={isSyncing}
                     unsyncedCount={unsyncedCount}
-                    onSync={handleSync}
+                    onSync={syncData}
                     isSupabaseConfigured={isSupabaseConfigured}
                     isEditMode={isEditMode}
                 />
-                <main className="container mx-auto p-4 md:p-6 lg:p-8">
-                     {isLoading ? (
-                        <div className="flex justify-center items-center h-64">
-                            {/* The loader is now in index.html, so this part can be empty or a lighter spinner if needed after initial load */}
-                        </div>
-                    ) : (
-                        <div className="animate-[fadeIn_0.3s_ease-out]">
-                             <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
-                            {currentPage === 'transactions' && (
-                                <TransactionsPage
-                                    transactions={filteredTransactions}
-                                    onEdit={handleEditTransaction}
-                                    onDelete={openDeleteModal}
-                                    openModal={openModal}
-                                    timeFilter={timeFilter}
-                                    setTimeFilter={setTimeFilter}
-                                    searchQuery={searchQuery}
-                                    setSearchQuery={setSearchQuery}
-                                    statusFilter={statusFilter}
-                                    setStatusFilter={setStatusFilter}
-                                    unsyncedIds={unsyncedIds}
-                                    onSetReminder={handleOpenReminderModal}
-                                    reminders={reminders}
-                                    onBulkDelete={handleBulkDelete}
-                                    onBulkUpdate={handleBulkUpdate}
-                                    onBulkSetReminder={handleBulkSetReminders}
-                                    isEditMode={isEditMode}
-                                />
-                            )}
-                            {currentPage === 'dashboard' && (
-                                <DashboardPage
-                                    transactions={dateFilteredTransactions}
-                                    timeFilter={timeFilter}
-                                    setTimeFilter={setTimeFilter}
-                                    isEditMode={isEditMode}
-                                />
-                            )}
-                            {currentPage === 'calculator' && (
-                                <CalculatorPage 
-                                    isEditMode={isEditMode}
-                                    calculations={calculations}
-                                    onAddCalculation={handleAddCalculation}
-                                    onUpdateCalculation={handleUpdateCalculation}
-                                    onDeleteCalculation={handleDeleteCalculation}
-                                />
-                            )}
-                             {currentPage === 'settings' && (
-                                <SettingsPage
-                                    currentSettings={settings}
-                                    onSave={handleSaveSettings}
-                                    notificationPermission={notificationPermission}
-                                    onRequestNotifications={requestNotificationPermission}
-                                    isEditMode={isEditMode}
-                                />
-                             )}
-                             {currentPage === 'reports' && (
-                                <ReportsPage transactions={transactions} />
-                             )}
-                        </div>
-                    )}
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900">
+                    <div className="container mx-auto px-4 md:px-6 py-4">
+                        <CurrentPage />
+                    </div>
                 </main>
             </div>
 
-            <TransactionForm
-                isOpen={isModalOpen}
-                onClose={closeModal}
-                onSubmit={editingTransaction ? handleUpdateTransaction : handleAddTransaction}
-                initialData={editingTransaction}
-                prefilledData={prefilledData}
-            />
-            <ConfirmationModal
-                isOpen={!!deletingTransactionId}
-                onClose={closeDeleteModal}
-                onConfirm={handleDeleteTransaction}
-                title="Delete Transaction"
-                message="Are you sure you want to delete this transaction? This action cannot be undone."
-            />
-            <ConflictResolutionModal
-                isOpen={conflicts.length > 0}
-                conflicts={conflicts}
-                onResolve={handleResolveConflict}
-            />
-            <ReminderModal
-                isOpen={isReminderModalOpen}
-                onClose={() => setIsReminderModalOpen(false)}
-                onSetReminder={handleSetReminder}
-                transaction={transactionForReminder}
-            />
+            {isModalOpen && (
+                <TransactionForm
+                    isOpen={isModalOpen}
+                    onClose={closeModal}
+                    onSubmit={editingTransaction ? updateTransaction : addTransaction}
+                    initialData={editingTransaction}
+                    prefilledData={prefilledData}
+                />
+            )}
+            
+            {transactionToDelete && (
+                <ConfirmationModal
+                    isOpen={!!transactionToDelete}
+                    onClose={() => setTransactionToDelete(null)}
+                    onConfirm={() => {
+                        if (transactionToDelete) {
+                            deleteTransaction(transactionToDelete);
+                        }
+                    }}
+                    title="Delete Transaction"
+                    message="Are you sure you want to delete this transaction? This action cannot be undone."
+                />
+            )}
+            
+            {transactionForReminder && (
+                <ReminderModal
+                    isOpen={!!transactionForReminder}
+                    onClose={() => setTransactionForReminder(null)}
+                    onSetReminder={handleSetReminder}
+                    transaction={transactionForReminder}
+                />
+            )}
+
+            {conflicts.length > 0 && (
+                <ConflictResolutionModal
+                    isOpen={conflicts.length > 0}
+                    conflicts={conflicts}
+                    onResolve={(chosenVersion: Transaction, choice: 'local' | 'server') => {
+                        updateTransaction(chosenVersion);
+                        setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
+                        addNotification(`Conflict resolved. Kept the ${choice} version.`, 'success');
+                    }}
+                />
+            )}
         </div>
     );
 };

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import type { Transaction } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -38,6 +37,7 @@ const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSetRem
             return;
         }
         onSetReminder(transaction.id, combinedDateTime);
+        onClose();
     };
 
     return (

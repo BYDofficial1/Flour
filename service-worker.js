@@ -1,4 +1,5 @@
-const CACHE_NAME = 'atta-chakki-hisab-v11'; // Bumped version to invalidate old cache
+
+const CACHE_NAME = 'atta-chakki-hisab-v12'; // Bumped version to invalidate old cache
 const CACHE_FILES = [
     // Core
     '/',
@@ -13,12 +14,12 @@ const CACHE_FILES = [
     // Utils
     '/utils/currency.ts',
     '/utils/export.ts',
-    '/utils/speech.ts',
     '/utils/sound.ts',
     '/utils/supabase.ts',
 
     // Pages
     '/pages/CalculatorPage.tsx',
+    '/pages/CustomersPage.tsx',
     '/pages/DashboardPage.tsx',
     '/pages/SettingsPage.tsx',
     '/pages/ReportsPage.tsx',
@@ -35,6 +36,7 @@ const CACHE_FILES = [
     '/components/ReminderModal.tsx',
     '/components/SalesChart.tsx',
     '/components/Sidebar.tsx',
+    '/components/SortControls.tsx',
     '/components/TimeFilterControls.tsx',
     '/components/Toast.tsx',
     '/components/TransactionForm.tsx',
@@ -42,6 +44,7 @@ const CACHE_FILES = [
 
     // Icons
     '/components/icons/ArrowRightLeftIcon.tsx',
+    '/components/icons/ArrowsUpDownIcon.tsx',
     '/components/icons/BellIcon.tsx',
     '/components/icons/CalendarIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',
@@ -68,6 +71,7 @@ const CACHE_FILES = [
     '/components/icons/SortIcon.tsx',
     '/components/icons/SyncIcon.tsx',
     '/components/icons/TrendingUpIcon.tsx',
+    '/components/icons/UserIcon.tsx',
     '/components/icons/WarningIcon.tsx',
     '/components/icons/WeightIcon.tsx',
     '/components/icons/WheatIcon.tsx',

@@ -158,8 +158,8 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
     }, []);
 
     const handleSaveOrUpdate = () => {
-        if (weights.length === 0 || !customerName.trim()) {
-            alert('Please add at least one weight and a customer name.');
+        if (weights.length === 0) {
+            alert('Please add at least one weight to save a calculation.');
             return;
         }
 
@@ -178,21 +178,21 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
         } else {
             // Create
             const newCalc = {
-                customerName,
+                customerName: customerName.trim() ? customerName.trim() : undefined,
                 totalKg: calculation.totalKg,
                 totalPrice: calculation.totalPrice,
                 bags: weights.map(w => ({ weight: w })),
                 notes: notes,
                 pricePerMaund: parseFloat(pricePerMaund) || 0,
             };
-            onAddCalculation(newCalc as any);
+            onAddCalculation(newCalc);
         }
         resetForm();
     };
     
     const handleEditClick = (calc: Calculation) => {
         setEditingCalculation(calc);
-        setCustomerName(calc.customerName);
+        setCustomerName(calc.customerName || '');
         setNotes(calc.notes || '');
         setPricePerMaund(calc.pricePerMaund?.toString() || '');
         setWeights(calc.bags.map(b => b.weight));
@@ -271,7 +271,7 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                  <div className="mt-8 pt-6 border-t border-slate-700 space-y-6">
                     <InputField
                         id="customerName"
-                        label={`Customer Name ${editingCalculation ? '(Editing)' : '(for saving)'}`}
+                        label={`Customer Name ${editingCalculation ? '(Editing)' : '(Optional)'}`}
                         value={customerName}
                         onChange={setCustomerName}
                         placeholder="Enter name..."
@@ -293,7 +293,7 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                     </button>
                     <button
                         onClick={handleSaveOrUpdate}
-                        disabled={weights.length === 0 || !customerName.trim()}
+                        disabled={weights.length === 0}
                         className="w-full px-6 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 transition-colors disabled:bg-slate-500/50 disabled:cursor-not-allowed"
                     >
                         {editingCalculation ? 'Update Calculation' : 'Save Calculation'}
@@ -309,14 +309,14 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                             <div key={calc.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 animate-[fadeIn_0.3s_ease-out]">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="font-bold text-slate-100 text-lg">{calc.customerName}</p>
+                                        <p className="font-bold text-slate-100 text-lg">{calc.customerName || 'Unnamed Calculation'}</p>
                                         <p className="text-xs text-slate-400 mt-1">{new Date(calc.createdAt).toLocaleString()}</p>
                                     </div>
                                      <div className="flex items-center gap-1">
-                                        <button onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors" aria-label={`Edit calculation for ${calc.customerName}`}>
+                                        <button onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors" aria-label={`Edit calculation for ${calc.customerName || 'Unnamed'}`}>
                                             <EditIcon />
                                         </button>
-                                        <button onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors" aria-label={`Delete calculation for ${calc.customerName}`}>
+                                        <button onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors" aria-label={`Delete calculation for ${calc.customerName || 'Unnamed'}`}>
                                             <DeleteIcon />
                                         </button>
                                     </div>

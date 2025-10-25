@@ -11,6 +11,8 @@ interface TransactionFormProps {
     prefilledData?: Partial<Transaction> | null;
 }
 
+const GRINDING_SERVICES = ['Wheat Grinding', 'Daliya Grinding'];
+
 const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSubmit, initialData, prefilledData }) => {
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
@@ -27,7 +29,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
     const [paidAmount, setPaidAmount] = useState('');
 
     const isEditing = !!initialData;
-    const totalRaw = (parseFloat(quantity) || 0) * (parseFloat(rate) || 0) + (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0);
+    const isGrindingService = GRINDING_SERVICES.includes(item);
+
+    const totalRaw = isGrindingService
+        ? (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0)
+        : (parseFloat(quantity) || 0) * (parseFloat(rate) || 0) + (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0);
+
     const total = Math.round((totalRaw + Number.EPSILON) * 100) / 100;
     const hasErrors = Object.values(errors).some(Boolean);
     
@@ -96,7 +103,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             customerName,
             item,
             quantity: parseFloat(quantity) || 0,
-            rate: parseFloat(rate) || 0,
+            rate: isGrindingService ? 0 : (parseFloat(rate) || 0),
             total,
             date: combinedDateTime,
             customerMobile,
@@ -164,21 +171,23 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                         </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
+                        <div className={isGrindingService ? 'sm:col-span-2' : ''}>
                             <label htmlFor="quantity" className="block text-sm font-medium text-slate-300">Quantity (kg)</label>
                             <input type="number" id="quantity" step="0.01" value={quantity} onChange={e => handleNumberChange(e.target.value, 'quantity')} required className={formInputClasses} />
                             {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
                         </div>
-                        <div>
-                            <label htmlFor="rate" className="block text-sm font-medium text-slate-300">Rate (Rs / kg)</label>
-                            <input type="number" id="rate" step="0.01" value={rate} onChange={e => handleNumberChange(e.target.value, 'rate')} required className={formInputClasses} />
-                            {errors.rate && <p className="text-red-500 text-xs mt-1">{errors.rate}</p>}
-                        </div>
+                        {!isGrindingService && (
+                            <div>
+                                <label htmlFor="rate" className="block text-sm font-medium text-slate-300">Rate (Rs / kg)</label>
+                                <input type="number" id="rate" step="0.01" value={rate} onChange={e => handleNumberChange(e.target.value, 'rate')} required className={formInputClasses} />
+                                {errors.rate && <p className="text-red-500 text-xs mt-1">{errors.rate}</p>}
+                            </div>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="grindingCost" className="block text-sm font-medium text-slate-300">Grinding Cost (Optional)</label>
-                            <input type="number" id="grindingCost" step="0.01" value={grindingCost} onChange={e => handleNumberChange(e.target.value, 'grindingCost')} className={formInputClasses} />
+                            <label htmlFor="grindingCost" className="block text-sm font-medium text-slate-300">{isGrindingService ? 'Total Grinding Cost' : 'Grinding Cost (Optional)'}</label>
+                            <input type="number" id="grindingCost" step="0.01" value={grindingCost} onChange={e => handleNumberChange(e.target.value, 'grindingCost')} required={isGrindingService} className={formInputClasses} />
                             {errors.grindingCost && <p className="text-red-500 text-xs mt-1">{errors.grindingCost}</p>}
                         </div>
                          <div>
@@ -214,21 +223,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                     )}
                     <div>
                         <label htmlFor="notes" className="block text-sm font-medium text-slate-300">Notes (Optional)</label>
-                        <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={formInputClasses} placeholder="Any extra details..."></textarea>
+                        <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={`${formInputClasses} min-h-[50px]`}></textarea>
                     </div>
-
-                     <div className="bg-primary-900/20 p-4 rounded-lg text-center border border-primary-500/30 shadow-inner">
-                        <p className="text-sm font-medium text-slate-300">Total Amount</p>
-                        <p className="text-4xl font-bold text-primary-400">{formatCurrency(total)}</p>
+                    <div className="bg-slate-900/50 p-4 rounded-lg my-4 border border-slate-700">
+                        <div className="flex justify-between items-center">
+                            <span className="font-semibold text-slate-300">Total Amount:</span>
+                            <span className="text-2xl font-bold text-primary-400">{formatCurrency(total)}</span>
+                        </div>
                     </div>
                     <div className="flex justify-end pt-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-600 text-slate-100 rounded-md mr-2 hover:bg-slate-500">Cancel</button>
                         <button 
                             type="submit" 
-                            className="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:bg-primary-400/50 disabled:cursor-not-allowed transition-transform transform hover:scale-105"
                             disabled={hasErrors}
+                            className="w-full sm:w-auto px-6 py-3 bg-primary-500 text-white font-semibold rounded-lg shadow-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-colors"
                         >
-                            {isEditing ? 'Save Changes' : 'Add Transaction'}
+                            {isEditing ? 'Update Transaction' : 'Save Transaction'}
                         </button>
                     </div>
                 </form>

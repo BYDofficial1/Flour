@@ -1,6 +1,7 @@
+
 import React, { useState, useCallback } from 'react';
 import type { Transaction, Reminder } from '../types';
-import type { TimeFilter } from '../App';
+import type { TimeFilter, SortKey } from '../App';
 import TransactionList from '../components/TransactionList';
 import BulkActionBar from '../components/BulkActionBar';
 import ChangeStatusModal from '../components/ChangeStatusModal';
@@ -11,6 +12,7 @@ import { SearchIcon } from '../components/icons/SearchIcon';
 import { ExportIcon } from '../components/icons/ExportIcon';
 import { exportTransactionsToTxt } from '../utils/export';
 import TimeFilterControls from '../components/TimeFilterControls';
+import SortControls from '../components/SortControls';
 
 interface StatusFilterControlsProps {
     statusFilter: Transaction['paymentStatus'][];
@@ -24,7 +26,10 @@ const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilte
         const newFilter = statusFilter.includes(status)
             ? statusFilter.filter(s => s !== status)
             : [...statusFilter, status];
-        setStatusFilter(newFilter);
+        // Ensure at least one is selected
+        if (newFilter.length > 0) {
+            setStatusFilter(newFilter);
+        }
     };
 
     const statusStyles: Record<Transaction['paymentStatus'], { active: string, inactive: string }> = {
@@ -70,6 +75,8 @@ interface TransactionsPageProps {
     onBulkUpdate: (ids: string[], newStatus: Transaction['paymentStatus']) => void;
     onBulkSetReminder: (ids: string[], remindAt: Date) => void;
     isEditMode: boolean;
+    sortConfig: { key: SortKey; direction: 'ascending' | 'descending' };
+    setSortConfig: (config: { key: SortKey; direction: 'ascending' | 'descending' }) => void;
 }
 
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
@@ -89,7 +96,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     onBulkDelete,
     onBulkUpdate,
     onBulkSetReminder,
-    isEditMode
+    isEditMode,
+    sortConfig,
+    setSortConfig
 }) => {
     const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(new Set());
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -122,7 +131,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }, []);
 
     const handleToggleBulkSelect = () => {
-        // When turning bulk select off, clear any existing selections
         if (isBulkSelectMode) {
             handleClearSelection();
         }
@@ -133,19 +141,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         onBulkDelete(Array.from(selectedTransactionIds));
         handleClearSelection();
         setIsDeleteModalOpen(false);
+        setIsBulkSelectMode(false);
     };
 
     const handleConfirmBulkStatusChange = (newStatus: Transaction['paymentStatus']) => {
         onBulkUpdate(Array.from(selectedTransactionIds), newStatus);
         handleClearSelection();
         setIsStatusModalOpen(false);
+        setIsBulkSelectMode(false);
     };
 
     const handleConfirmBulkReminder = (_: string, remindAt: Date) => {
-        // First argument is transactionId, which we ignore in bulk mode
         onBulkSetReminder(Array.from(selectedTransactionIds), remindAt);
         handleClearSelection();
         setIsReminderModalOpen(false);
+        setIsBulkSelectMode(false);
     };
 
     return (
@@ -190,6 +200,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div className="bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-700 space-y-4 md:space-y-0 md:flex md:flex-wrap md:items-center md:justify-between md:gap-x-8 md:gap-y-4">
                 <TimeFilterControls timeFilter={timeFilter} setTimeFilter={setTimeFilter} isPrimary={false} />
                 <StatusFilterControls statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+                <SortControls sortConfig={sortConfig} setSortConfig={setSortConfig} />
             </div>
 
             <TransactionList
@@ -204,6 +215,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onSelectOne={handleSelectOne}
                 onSelectAll={handleSelectAll}
                 isEditMode={isEditMode}
+                sortConfig={sortConfig}
+                setSortConfig={setSortConfig}
             />
             
             {isEditMode && (
@@ -218,7 +231,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 </button>
             )}
             
-            {selectedTransactionIds.size > 0 && (
+            {selectedTransactionIds.size > 0 && isBulkSelectMode && (
                 <BulkActionBar
                     count={selectedTransactionIds.size}
                     onClear={handleClearSelection}

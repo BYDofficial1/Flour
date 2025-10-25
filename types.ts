@@ -20,7 +20,7 @@ export interface Transaction {
 
 export interface Calculation {
     id: string;
-    customerName: string;
+    customerName?: string;
     totalKg: number;
     totalPrice: number;
     bags: { weight: number }[];
