@@ -26,7 +26,7 @@ const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilte
     const tapState = useRef<{ status: string; count: number; timer: number | null }>({ status: '', count: 0, timer: null });
 
     const handleToggle = (status: Transaction['paymentStatus']) => {
-        // --- Triple Tap Logic ---
+        // --- Triple Tap Logic for touch devices ---
         if (tapState.current.timer) {
             clearTimeout(tapState.current.timer);
         }
@@ -43,31 +43,39 @@ const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilte
             addNotification(`Multi-select for status ${newMultiSelectState ? 'enabled' : 'disabled'}.`, 'info');
             tapState.current = { status: '', count: 0, timer: null };
 
-            // When disabling multi-select, ensure only the last tapped item remains selected
             if (!newMultiSelectState && statusFilter.length > 1) {
                 setStatusFilter([status]);
             }
-            return; // Exit after toggling mode
+            return;
         }
 
-        // Reset tap count after a short delay
         tapState.current.timer = window.setTimeout(() => {
             tapState.current = { status: '', count: 0, timer: null };
         }, 400);
 
-        // --- Filter Selection Logic ---
+        // --- Standard Filter Selection Logic ---
         if (isMultiSelect) {
             const newFilter = statusFilter.includes(status)
                 ? statusFilter.filter(s => s !== status)
                 : [...statusFilter, status];
             
-            // Ensure at least one item is always selected in multi-select mode
             if (newFilter.length > 0) {
                 setStatusFilter(newFilter);
+            } else {
+                 addNotification("At least one status must be selected in multi-select mode.", "info");
             }
         } else {
-            // Single select mode
             setStatusFilter([status]);
+        }
+    };
+    
+    const handleMultiSelectToggle = () => {
+        const newState = !isMultiSelect;
+        setIsMultiSelect(newState);
+        addNotification(`Multi-select for status ${newState ? 'enabled' : 'disabled'}.`, 'info');
+        if (!newState && statusFilter.length > 1) {
+            // When disabling, default to the first selected item
+            setStatusFilter([statusFilter[0]]);
         }
     };
 
@@ -79,7 +87,16 @@ const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilte
 
     return (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <label className="text-sm font-medium text-slate-300 mr-2 flex-shrink-0">Filter by status:</label>
+            <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-300 mr-1 flex-shrink-0">Filter by status:</label>
+                <button
+                    onClick={handleMultiSelectToggle}
+                    title={isMultiSelect ? "Switch to single select" : "Enable multi-select"}
+                    className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${isMultiSelect ? 'bg-primary-500 text-white' : 'bg-slate-600 hover:bg-slate-500 text-slate-200'}`}
+                >
+                    {isMultiSelect ? 'MULTI' : 'SINGLE'}
+                </button>
+            </div>
             <div className="flex items-center gap-2 p-1 rounded-lg">
                 {statuses.map(status => (
                     <button

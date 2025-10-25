@@ -170,8 +170,7 @@ const App: React.FC = () => {
     const syncLock = useRef(false);
     const isInitialSync = useRef(true);
     const [queueVersion, setQueueVersion] = useState(0); // Used to trigger re-renders for unsyncedCount
-    const editModeTapState = useRef<{ count: number; timer: number | null }>({ count: 0, timer: null });
-
+    
     const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<Transaction['paymentStatus'][]>(['paid', 'unpaid', 'partial']);
@@ -229,23 +228,9 @@ const App: React.FC = () => {
     };
 
     const handleToggleEditMode = () => {
-        if (editModeTapState.current.timer) {
-            clearTimeout(editModeTapState.current.timer);
-        }
-
-        editModeTapState.current.count += 1;
-
-        if (editModeTapState.current.count === 3) {
-            const newEditModeState = !isEditMode;
-            setIsEditMode(newEditModeState);
-            addNotification(`Edit mode ${newEditModeState ? 'enabled' : 'disabled'}.`, newEditModeState ? 'success' : 'info');
-            editModeTapState.current = { count: 0, timer: null };
-            return;
-        }
-
-        editModeTapState.current.timer = window.setTimeout(() => {
-            editModeTapState.current = { count: 0, timer: null };
-        }, 400);
+        const newEditModeState = !isEditMode;
+        setIsEditMode(newEditModeState);
+        addNotification(`Edit mode ${newEditModeState ? 'enabled' : 'disabled'}.`, newEditModeState ? 'success' : 'info');
     };
 
     const syncData = useCallback(async () => {
