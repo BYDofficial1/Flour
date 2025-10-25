@@ -1,21 +1,22 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Transaction } from '../types';
 import type { TimeFilter } from '../App';
 import Dashboard from '../components/Dashboard';
-import SalesChart from '../components/SalesChart';
-import DailySales from '../components/DailySales';
+import MainChart from '../components/SalesChart';
 import TimeFilterControls from '../components/TimeFilterControls';
 import { ExportIcon } from '../components/icons/ExportIcon';
 import { exportTransactionsToTxt } from '../utils/export';
 
 interface DashboardPageProps {
     transactions: Transaction[];
+    allTransactions: Transaction[];
     timeFilter: TimeFilter;
     setTimeFilter: (filter: TimeFilter) => void;
     isEditMode: boolean;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, timeFilter, setTimeFilter, isEditMode }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, allTransactions, timeFilter, setTimeFilter, isEditMode }) => {
+    
     return (
         <div className="space-y-8 mt-4">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -37,13 +38,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, timeFilter,
 
             <Dashboard transactions={transactions} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3">
-                    <SalesChart transactions={transactions} />
-                </div>
-                <div className="lg:col-span-2">
-                    <DailySales transactions={transactions} />
-                </div>
+            <div className="w-full">
+                <MainChart transactions={transactions} />
             </div>
         </div>
     );

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Transaction, Reminder, Settings, Theme, Calculation } from './types';
 import Header from './components/Header';
@@ -11,11 +9,12 @@ import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
-import ConflictResolutionModal from './components/ConflictResolutionModal';
 import ReminderModal from './components/ReminderModal';
 import { supabase } from './utils/supabase';
 import { useNotifier } from './context/NotificationContext';
 import { playNotificationSound } from './utils/sound';
+import { InformationCircleIcon } from './components/icons/InformationCircleIcon';
+import { CloseIcon } from './components/icons/CloseIcon';
 
 export type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
 export type TimeFilter = {
@@ -113,37 +112,29 @@ const mergeData = (
     localData: Transaction[], 
     serverData: Transaction[], 
     pushedIds: Set<string>
-): { mergedData: Transaction[], newConflicts: { local: Transaction, server: Transaction }[] } => {
+): { mergedData: Transaction[], autoResolvedCount: number } => {
     
     const localMap = new Map(localData.map(d => [d.id, d]));
     const serverMap = new Map(serverData.map(d => [d.id, d]));
     const mergedMap = new Map<string, Transaction>();
-    const newConflicts: { local: Transaction, server: Transaction }[] = [];
+    let autoResolvedCount = 0;
 
     // Process all server items
     for (const serverItem of serverData) {
         const localItem = localMap.get(serverItem.id);
         if (localItem) {
-            // Item exists in both places
-            if (pushedIds.has(localItem.id)) {
-                 // We just pushed this. Server version is the most up-to-date.
-                mergedMap.set(serverItem.id, serverItem);
-            } else {
+            // Item exists in both places. If we didn't just push it, check for conflicts.
+            if (!pushedIds.has(localItem.id)) {
                 const serverDate = new Date(serverItem.updatedAt || 0).getTime();
                 const localDate = new Date(localItem.updatedAt || 0).getTime();
-                if (Math.abs(serverDate - localDate) > 1000) { // Conflict
-                    newConflicts.push({ local: localItem, server: serverItem });
-                    // Keep local version for now until resolved by user
-                    mergedMap.set(localItem.id, localItem);
-                } else {
-                    // No conflict, versions are same or close enough
-                    mergedMap.set(serverItem.id, serverItem);
+                // If versions differ by more than a second, it's a conflict we auto-resolve.
+                if (Math.abs(serverDate - localDate) > 1000) {
+                    autoResolvedCount++;
                 }
             }
-        } else {
-            // Item is only on server, so add it
-            mergedMap.set(serverItem.id, serverItem);
         }
+        // "Server wins" strategy: always prioritize the server version.
+        mergedMap.set(serverItem.id, serverItem);
     }
     
     // Add local-only items (newly created or that failed to sync before)
@@ -153,7 +144,7 @@ const mergeData = (
         }
     }
 
-    return { mergedData: Array.from(mergedMap.values()), newConflicts };
+    return { mergedData: Array.from(mergedMap.values()), autoResolvedCount };
 };
 
 const App: React.FC = () => {
@@ -172,12 +163,12 @@ const App: React.FC = () => {
     const [prefilledData, setPrefilledData] = useState<Partial<Transaction> | null>(null);
     const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
     const [transactionForReminder, setTransactionForReminder] = useState<Transaction | null>(null);
-    const [conflicts, setConflicts] = useState<{ local: Transaction; server: Transaction }[]>([]);
     
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isSyncing, setIsSyncing] = useState(false);
     const isSupabaseConfigured = !!supabase;
     const syncLock = useRef(false);
+    const isInitialSync = useRef(true);
     const [queueVersion, setQueueVersion] = useState(0); // Used to trigger re-renders for unsyncedCount
 
     const [timeFilter, setTimeFilter] = useState<TimeFilter>({ period: 'all' });
@@ -189,6 +180,7 @@ const App: React.FC = () => {
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
         'Notification' in window ? Notification.permission : 'default'
     );
+    const [isNoticeVisible, setIsNoticeVisible] = useState(false);
     
     const setQueue = <T,>(key: string, data: T[]) => {
         localStorage.setItem(key, JSON.stringify(data));
@@ -220,16 +212,26 @@ const App: React.FC = () => {
             };
             window.addEventListener('typingAnimationComplete', () => setTimeout(hideLoader, 250), { once: true });
         }
+
+        const noticeDismissed = localStorage.getItem('noticeDismissed');
+        if (noticeDismissed !== 'true') {
+            setIsNoticeVisible(true);
+        }
     }, []);
+
+    const dismissNotice = () => {
+        setIsNoticeVisible(false);
+        localStorage.setItem('noticeDismissed', 'true');
+    };
 
     const syncData = useCallback(async () => {
         if (!isOnline || !isSupabaseConfigured || syncLock.current) return;
 
         syncLock.current = true;
         setIsSyncing(true);
-        addNotification('Syncing data...', 'info');
-
-        const tUpdatesForConflictCheck = getQueue<Transaction>(SYNC_QUEUES.UPDATES);
+        if (!isInitialSync.current) {
+          addNotification('Syncing data...', 'info');
+        }
 
         try {
             // --- Step 1: PUSH LOCAL CHANGES ---
@@ -269,6 +271,8 @@ const App: React.FC = () => {
                 if (error) throw error;
             }
 
+            const pushedTxIds = new Set([...tCreates.map(t => t.id), ...tUpdates.map(t => t.id)]);
+
             // --- Step 2: Clear queues on successful push ---
             setQueue<string>(SYNC_QUEUES.DELETES, []);
             setQueue<Transaction>(SYNC_QUEUES.CREATES, []);
@@ -292,10 +296,10 @@ const App: React.FC = () => {
             // Merge Transactions
             const serverTransactions = serverTransactionsData.map(fromSupabase);
             const currentLocalTransactions = getQueue<Transaction>('transactions');
-            const { mergedData: finalTransactions, newConflicts } = mergeData(
+            const { mergedData: finalTransactions, autoResolvedCount } = mergeData(
                 currentLocalTransactions, 
                 serverTransactions,
-                new Set(tUpdatesForConflictCheck.map(t => t.id))
+                pushedTxIds
             );
 
             setTransactions(finalTransactions);
@@ -306,20 +310,40 @@ const App: React.FC = () => {
             setCalculations(serverCalculations);
             localStorage.setItem('calculations', JSON.stringify(serverCalculations));
 
-            if (newConflicts.length > 0) {
-                setConflicts(prev => [...prev, ...newConflicts]);
-                addNotification(`${newConflicts.length} sync conflicts found. Please resolve them.`, 'error');
+            if (isInitialSync.current) {
+                if (autoResolvedCount > 0) {
+                    addNotification(`${autoResolvedCount} records auto-updated from server.`, 'info');
+                }
             } else {
-                addNotification('Sync complete!', 'success');
+                 if (autoResolvedCount > 0) {
+                    addNotification(`${autoResolvedCount} records auto-updated. Sync complete!`, 'success');
+                } else {
+                    addNotification('Sync complete!', 'success');
+                }
             }
 
         } catch (error: any) {
             console.error("Sync failed:", error);
-            const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+            let errorMessage = "An unknown error occurred.";
+            if (error && typeof error === 'object') {
+                if ('message' in error && typeof error.message === 'string' && error.message) {
+                    errorMessage = error.message;
+                } else {
+                    try {
+                        const stringified = JSON.stringify(error);
+                        errorMessage = stringified === '{}' ? "Received an empty error object." : stringified;
+                    } catch (e) {
+                        errorMessage = "Could not stringify the error object.";
+                    }
+                }
+            } else if (error) {
+                errorMessage = String(error);
+            }
             addNotification(`Sync failed: ${errorMessage}`, 'error');
         } finally {
             setIsSyncing(false);
             syncLock.current = false;
+            isInitialSync.current = false;
         }
     }, [isOnline, isSupabaseConfigured, addNotification]);
     
@@ -340,12 +364,33 @@ const App: React.FC = () => {
              document.documentElement.className = `theme-green`;
         }
 
+        let syncInterval: number | undefined;
+
+        const startAutoSync = () => {
+            if (syncInterval) clearInterval(syncInterval);
+            if (isOnline && isSupabaseConfigured) {
+                syncInterval = window.setInterval(() => {
+                    syncData();
+                }, 2 * 60 * 1000); // Sync every 2 minutes
+            }
+        };
+
         if (isOnline && isSupabaseConfigured) {
             syncData();
         }
+        startAutoSync();
 
-        const handleOnline = () => { setIsOnline(true); addNotification('Back online!', 'success'); syncData(); };
-        const handleOffline = () => { setIsOnline(false); addNotification('You are offline.', 'info'); };
+        const handleOnline = () => { 
+            setIsOnline(true); 
+            addNotification('You are back online! Syncing changes...', 'success'); 
+            syncData(); 
+            startAutoSync(); 
+        };
+        const handleOffline = () => { 
+            setIsOnline(false); 
+            addNotification('Connection lost. Switching to offline mode.', 'info'); 
+            if (syncInterval) clearInterval(syncInterval);
+        };
 
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
@@ -353,8 +398,9 @@ const App: React.FC = () => {
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            if (syncInterval) clearInterval(syncInterval);
         };
-    }, [isSupabaseConfigured, syncData]);
+    }, [isOnline, isSupabaseConfigured, syncData, addNotification]);
 
     const addTransaction = (data: Omit<Transaction, 'id' | 'updatedAt'>) => {
         const newTransaction: Transaction = { ...data, id: crypto.randomUUID(), updatedAt: new Date().toISOString() };
@@ -561,7 +607,13 @@ const App: React.FC = () => {
     const CurrentPage = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} isEditMode={isEditMode} />;
+                return <DashboardPage 
+                            transactions={filteredTransactions} 
+                            allTransactions={transactions}
+                            timeFilter={timeFilter} 
+                            setTimeFilter={setTimeFilter} 
+                            isEditMode={isEditMode} 
+                        />;
             case 'transactions':
                 return <TransactionsPage 
                             transactions={filteredTransactions}
@@ -603,7 +655,13 @@ const App: React.FC = () => {
                             isEditMode={isEditMode}
                         />;
             default:
-                return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} isEditMode={isEditMode} />;
+                return <DashboardPage 
+                            transactions={filteredTransactions} 
+                            allTransactions={transactions}
+                            timeFilter={timeFilter} 
+                            setTimeFilter={setTimeFilter} 
+                            isEditMode={isEditMode}
+                        />;
         }
     };
     
@@ -632,7 +690,24 @@ const App: React.FC = () => {
                     isSupabaseConfigured={isSupabaseConfigured}
                     isEditMode={isEditMode}
                 />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900">
+
+                {isNoticeVisible && (
+                    <div className="bg-slate-700 text-slate-200 text-sm px-4 py-2 flex items-center justify-center gap-3 relative text-center">
+                        <InformationCircleIcon className="h-5 w-5 text-slate-300 flex-shrink-0" />
+                        <p>
+                            <strong>Notice:</strong> This application is under active development and may be updated at any time.
+                        </p>
+                        <button 
+                            onClick={dismissNotice} 
+                            className="p-1 rounded-full hover:bg-slate-600 absolute right-2 top-1/2 -translate-y-1/2"
+                            aria-label="Dismiss notice"
+                        >
+                            <CloseIcon className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+                
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900 no-scrollbar">
                     <div className="container mx-auto px-4 md:px-6 py-4">
                         <CurrentPage />
                     </div>
@@ -672,17 +747,6 @@ const App: React.FC = () => {
                 />
             )}
 
-            {conflicts.length > 0 && (
-                <ConflictResolutionModal
-                    isOpen={conflicts.length > 0}
-                    conflicts={conflicts}
-                    onResolve={(chosenVersion: Transaction, choice: 'local' | 'server') => {
-                        updateTransaction(chosenVersion);
-                        setConflicts(prev => prev.filter(c => c.local.id !== chosenVersion.id));
-                        addNotification(`Conflict resolved. Kept the ${choice} version.`, 'success');
-                    }}
-                />
-            )}
         </div>
     );
 };

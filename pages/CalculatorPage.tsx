@@ -237,7 +237,7 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                     {weights.length > 0 && (
                         <div>
                             <h3 className="text-md font-semibold text-slate-200 mb-2">Weight Entries ({weights.length})</h3>
-                            <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                            <div className="max-h-48 overflow-y-auto space-y-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600 no-scrollbar">
                                 {weights.map((w, i) => (
                                     <div key={i} className="flex justify-between items-center bg-slate-600 p-2 rounded-md animate-[fadeIn_0.2s_ease-out]">
                                         <span className="text-slate-100">{i + 1}. <span className="font-mono">{w.toFixed(2)} kg</span></span>

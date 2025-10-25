@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Transaction, Reminder } from '../types';
 import { EditIcon } from './icons/EditIcon';
@@ -243,7 +241,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
             {/* Desktop Table View */}
             <div className="hidden md:block bg-slate-800 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-sm text-left text-slate-300">
                         <thead className="text-xs text-slate-400 uppercase bg-slate-700/50">
                             <tr>

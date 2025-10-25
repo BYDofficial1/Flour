@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { Transaction, Reminder } from '../types';
 import type { TimeFilter, SortKey } from '../App';
 import TransactionList from '../components/TransactionList';
@@ -13,6 +12,7 @@ import { ExportIcon } from '../components/icons/ExportIcon';
 import { exportTransactionsToTxt } from '../utils/export';
 import TimeFilterControls from '../components/TimeFilterControls';
 import SortControls from '../components/SortControls';
+import { useNotifier } from '../context/NotificationContext';
 
 interface StatusFilterControlsProps {
     statusFilter: Transaction['paymentStatus'][];
@@ -21,14 +21,53 @@ interface StatusFilterControlsProps {
 
 const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilter, setStatusFilter }) => {
     const statuses: Transaction['paymentStatus'][] = ['paid', 'unpaid', 'partial'];
-    
+    const { addNotification } = useNotifier();
+    const [isMultiSelect, setIsMultiSelect] = useState(false);
+    const tapState = useRef<{ status: string; count: number; timer: number | null }>({ status: '', count: 0, timer: null });
+
     const handleToggle = (status: Transaction['paymentStatus']) => {
-        const newFilter = statusFilter.includes(status)
-            ? statusFilter.filter(s => s !== status)
-            : [...statusFilter, status];
-        // Ensure at least one is selected
-        if (newFilter.length > 0) {
-            setStatusFilter(newFilter);
+        // --- Triple Tap Logic ---
+        if (tapState.current.timer) {
+            clearTimeout(tapState.current.timer);
+        }
+
+        if (tapState.current.status !== status) {
+            tapState.current = { status, count: 1, timer: null };
+        } else {
+            tapState.current.count += 1;
+        }
+
+        if (tapState.current.count === 3) {
+            const newMultiSelectState = !isMultiSelect;
+            setIsMultiSelect(newMultiSelectState);
+            addNotification(`Multi-select for status ${newMultiSelectState ? 'enabled' : 'disabled'}.`, 'info');
+            tapState.current = { status: '', count: 0, timer: null };
+
+            // When disabling multi-select, ensure only the last tapped item remains selected
+            if (!newMultiSelectState && statusFilter.length > 1) {
+                setStatusFilter([status]);
+            }
+            return; // Exit after toggling mode
+        }
+
+        // Reset tap count after a short delay
+        tapState.current.timer = window.setTimeout(() => {
+            tapState.current = { status: '', count: 0, timer: null };
+        }, 400);
+
+        // --- Filter Selection Logic ---
+        if (isMultiSelect) {
+            const newFilter = statusFilter.includes(status)
+                ? statusFilter.filter(s => s !== status)
+                : [...statusFilter, status];
+            
+            // Ensure at least one item is always selected in multi-select mode
+            if (newFilter.length > 0) {
+                setStatusFilter(newFilter);
+            }
+        } else {
+            // Single select mode
+            setStatusFilter([status]);
         }
     };
 

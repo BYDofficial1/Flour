@@ -35,6 +35,11 @@ const TEXT_COLORS = {
     info: 'text-blue-200',
 };
 
+const PROGRESS_BG = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    info: 'bg-blue-500',
+};
 
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     const [isVisible, setIsVisible] = useState(false);
@@ -46,11 +51,11 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
         // Set timers for auto-dismiss
         const timer = setTimeout(() => {
             setIsVisible(false);
-        }, 4000); // 4 seconds visible
+        }, 2000); // 2 seconds visible
 
         const closeTimer = setTimeout(() => {
             onClose();
-        }, 4300); // 4.3 seconds to allow fade out
+        }, 2300); // 2.3 seconds to allow fade out
 
         return () => {
             clearTimeout(enterTimeout);
@@ -61,7 +66,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
 
     return (
         <div
-            className={`flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-lg border-l-4 backdrop-blur-sm transition-all duration-300 transform ${BG_COLORS[type]} ${BORDER_COLORS[type]} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+            className={`relative overflow-hidden flex items-start p-4 mb-3 w-full max-w-sm rounded-lg shadow-lg border-l-4 backdrop-blur-sm transition-all duration-300 transform ${BG_COLORS[type]} ${BORDER_COLORS[type]} ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
             role="alert"
         >
             <div className="flex-shrink-0">{ICONS[type]}</div>
@@ -76,6 +81,10 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
                 <span className="sr-only">Close</span>
                 <CloseIcon />
             </button>
+            <div 
+                className={`absolute bottom-0 left-0 h-1 ${PROGRESS_BG[type]}`}
+                style={{ animation: 'progress-bar 2s linear forwards' }}
+            />
         </div>
     );
 };

@@ -3,7 +3,6 @@ import { MenuIcon } from './icons/MenuIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { SyncIcon } from './icons/SyncIcon';
 import { WifiIcon } from './icons/WifiIcon';
-import { CheckCircleIcon } from './icons/CheckCircleIcon';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -34,13 +33,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, unsyn
                     {isSupabaseConfigured && isOnline && (
                         <button
                             onClick={onSync}
-                            disabled={isSyncing || unsyncedCount === 0}
+                            disabled={isSyncing}
                             className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg shadow-md transition-all text-white bg-primary-500 hover:bg-primary-600 disabled:bg-slate-500 disabled:cursor-not-allowed"
-                            aria-label={unsyncedCount > 0 ? `Sync ${unsyncedCount} offline changes` : 'Data is up to date'}
+                            aria-label={isSyncing ? 'Syncing data...' : (unsyncedCount > 0 ? `Sync ${unsyncedCount} offline changes` : 'Refresh data from server')}
+                            title={isSyncing ? 'Sync in progress...' : (unsyncedCount > 0 ? 'Sync local changes' : 'Check for new data from server. Sync is also automatic.')}
                         >
-                             {unsyncedCount > 0 || isSyncing ? <SyncIcon className={isSyncing ? 'animate-spin' : ''} /> : <CheckCircleIcon className="h-5 w-5"/>}
+                             <SyncIcon className={isSyncing ? 'animate-spin' : ''} />
                              <span className="hidden sm:inline">
-                                {isSyncing ? 'Syncing...' : (unsyncedCount > 0 ? `Sync (${unsyncedCount})` : 'Up to Date')}
+                                {isSyncing ? 'Syncing...' : (unsyncedCount > 0 ? `Sync (${unsyncedCount})` : 'Refresh')}
                             </span>
                         </button>
                     )}
