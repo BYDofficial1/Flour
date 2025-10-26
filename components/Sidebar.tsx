@@ -4,16 +4,19 @@ import { ListBulletIcon } from './icons/ListBulletIcon';
 import { CloseIcon } from './icons/CloseIcon';
 import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
-import { CogIcon } from './icons/CogIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
+import { useNotifier } from '../context/NotificationContext';
+import { UserIcon } from './icons/UserIcon';
+import { CogIcon } from './icons/CogIcon';
 
-type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
+type Page = 'transactions' | 'dashboard' | 'customers' | 'reports' | 'calculator' | 'settings';
 
 interface SidebarProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     currentPage: Page;
     setCurrentPage: (page: Page) => void;
+    isEditMode: boolean;
 }
 
 const NavItem: React.FC<{
@@ -39,7 +42,8 @@ const NavItem: React.FC<{
     </li>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCurrentPage, isEditMode }) => {
+    const { addNotification } = useNotifier();
 
     const handleNavigation = (page: Page) => {
         setCurrentPage(page);
@@ -62,13 +66,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
             >
                 <div>
                     <div className="flex justify-between items-center mb-8">
-                         <div className="flex-grow flex items-center gap-2">
-                            <div className="p-2">
-                                <WheatIcon />
-                            </div>
-                            <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-yellow-300">
-                               Atta Chakki Hisab
-                            </span>
+                         <div className="flex items-center gap-3">
+                            <WheatIcon />
+                            <h1 className="text-xl font-bold text-slate-100">
+                                Atta Chakki Hisab
+                            </h1>
                         </div>
                         <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white lg:hidden -mr-2 flex-shrink-0">
                             <CloseIcon />
@@ -79,13 +81,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                         <ul className="space-y-2">
                              <NavItem label="Dashboard" icon={<ChartIcon className="h-5 w-5" />} isActive={currentPage === 'dashboard'} onClick={() => handleNavigation('dashboard')} />
                              <NavItem label="Transactions" icon={<ListBulletIcon />} isActive={currentPage === 'transactions'} onClick={() => handleNavigation('transactions')} />
+                             <NavItem label="Customers" icon={<UserIcon />} isActive={currentPage === 'customers'} onClick={() => handleNavigation('customers')} />
                              <NavItem label="Reports" icon={<DocumentTextIcon />} isActive={currentPage === 'reports'} onClick={() => handleNavigation('reports')} />
                              <NavItem label="Calculator" icon={<CalculatorIcon />} isActive={currentPage === 'calculator'} onClick={() => handleNavigation('calculator')} />
-                             <NavItem label="Settings" icon={<CogIcon />} isActive={currentPage === 'settings'} onClick={() => handleNavigation('settings')} />
                         </ul>
                     </nav>
                 </div>
-                
+                 <div>
+                    <nav>
+                        <ul className="space-y-2">
+                            <NavItem label="Settings" icon={<CogIcon />} isActive={currentPage === 'settings'} onClick={() => handleNavigation('settings')} />
+                        </ul>
+                    </nav>
+                </div>
             </aside>
         </Fragment>
     );

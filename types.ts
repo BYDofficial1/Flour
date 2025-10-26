@@ -15,6 +15,13 @@ export interface Transaction {
     payment_status: 'paid' | 'unpaid' | 'partial';
     paid_amount?: number;
     user_id?: string;
+    took_flour?: boolean; // Kept for backward compatibility
+    flour_taken_kg?: number;
+    is_settled?: boolean;
+    paid_cleaning_with_flour?: boolean;
+    paid_grinding_with_flour?: boolean;
+    grinding_cost_flour_kg?: number;
+    cleaning_cost_flour_kg?: number;
 }
 
 export interface Calculation {
@@ -37,9 +44,18 @@ export interface Reminder {
     isDismissed?: boolean;
 }
 
-export type Theme = 'amber' | 'blue' | 'green' | 'slate';
+export type Theme = 'amber' | 'blue' | 'green' | 'slate' | 'red' | 'rose' | 'violet' | 'indigo' | 'teal' | 'cyan';
 
 export interface Settings {
     soundEnabled: boolean;
     theme: Theme;
+}
+
+export interface Service {
+    id: string;
+    user_id: string;
+    name: string;
+    default_rate?: number;
+    category?: string;
+    created_at: string;
 }

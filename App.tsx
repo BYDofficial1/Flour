@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './utils/supabase';
-import type { Transaction, Reminder, Settings, Calculation } from './types';
+import type { Transaction, Reminder, Settings, Calculation, Service } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
@@ -9,6 +9,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
+import CustomersPage from './pages/CustomersPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ReminderModal from './components/ReminderModal';
@@ -21,7 +22,7 @@ import { formatCurrency } from './utils/currency';
 import { PlusIcon } from './components/icons/PlusIcon';
 import AuthModal from './components/AuthModal';
 
-export type Page = 'transactions' | 'dashboard' | 'calculator' | 'settings' | 'reports';
+export type Page = 'transactions' | 'dashboard' | 'customers' | 'reports' | 'calculator' | 'settings';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -43,6 +44,7 @@ const App: React.FC = () => {
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [calculations, setCalculations] = useState<Calculation[]>([]);
+    const [services, setServices] = useState<Service[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>(() => JSON.parse(localStorage.getItem('reminders') || '[]'));
     const [settings, setSettings] = useState<Settings>(() => JSON.parse(localStorage.getItem('settings') || JSON.stringify({ soundEnabled: true, theme: 'green' })));
     
@@ -65,46 +67,53 @@ const App: React.FC = () => {
     
     // --- Auth & Session Management ---
     useEffect(() => {
-        const setupPublicSession = async () => {
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            if (currentSession) {
-                setSession(currentSession);
-                setUser(currentSession.user);
-                return;
-            }
+        // This subscription ensures the app state reacts to login/logout events.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+        });
 
-            const demoEmail = 'admin@attachakki.com';
-            const demoPassword = 'attachakki';
+        const initializeSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
 
-            const { data, error: signInError } = await supabase.auth.signInWithPassword({
-                email: demoEmail,
-                password: demoPassword,
-            });
+            // If a session exists, onAuthStateChange will eventually fire with 'INITIAL_SESSION'
+            // and the user state will be set, which will trigger data fetching.
+            // If no session exists, we create one for the public demo user.
+            if (!session) {
+                const demoEmail = 'admin@attachakki.com';
+                const demoPassword = 'attachakki';
 
-            if (signInError) {
-                console.warn('Public user sign-in failed, attempting sign-up:', signInError.message);
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                const { error: signInError } = await supabase.auth.signInWithPassword({
                     email: demoEmail,
                     password: demoPassword,
                 });
 
-                if (signUpError) {
-                    console.error('Public user sign-up also failed:', signUpError.message);
-                    const errorMsg = 'Failed to initialize the public session. This might be a network issue or a problem with the backend configuration (RLS policies).';
-                    addNotification(errorMsg, 'error');
-                    setLoadError(errorMsg);
-                    setIsLoading(false);
-                    return;
+                if (signInError) {
+                    console.warn('Public user sign-in failed, attempting sign-up:', signInError.message);
+                    const { error: signUpError } = await supabase.auth.signUp({
+                        email: demoEmail,
+                        password: demoPassword,
+                    });
+
+                    if (signUpError) {
+                        console.error('Public user sign-up also failed:', signUpError.message);
+                        const errorMsg = 'Failed to initialize the public session. This might be a network issue or a problem with the backend configuration (RLS policies).';
+                        addNotification(errorMsg, 'error');
+                        setLoadError(errorMsg);
+                        setIsLoading(false); // Auth failed, stop loading and show error.
+                    }
                 }
-                setSession(signUpData.session);
-                setUser(signUpData.user);
-            } else {
-                setSession(data.session);
-                setUser(data.user);
             }
+            // If session exists, or sign-in/sign-up is successful, onAuthStateChange
+            // will set the user, which triggers the data fetch useEffect.
+            // That useEffect is responsible for setting isLoading to false.
         };
 
-        setupPublicSession();
+        initializeSession();
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, [addNotification]);
 
 
@@ -170,25 +179,26 @@ const App: React.FC = () => {
 
     // --- Data Fetching ---
     useEffect(() => {
-        if (!user) return; // Wait for the public user session to be established
+        if (!user) return; 
 
         const fetchData = async () => {
             setIsLoading(true);
             setLoadError(null);
             setIsSyncing(true);
 
-            const [transactionsResponse, calculationsResponse] = await Promise.all([
+            const [transactionsResponse, calculationsResponse, servicesResponse] = await Promise.all([
                 supabase.from('transactions').select('*').order('date', { ascending: false }),
-                supabase.from('calculations').select('*').order('created_at', { ascending: false })
+                supabase.from('calculations').select('*').order('created_at', { ascending: false }),
+                supabase.from('services').select('*').order('name', { ascending: true })
             ]);
 
             setIsSyncing(false);
 
-            if (transactionsResponse.error || calculationsResponse.error) {
-                const error = transactionsResponse.error || calculationsResponse.error;
-                const message = getErrorMessage(error);
+            const dataError = transactionsResponse.error || calculationsResponse.error || servicesResponse.error;
+            if (dataError) {
+                const message = getErrorMessage(dataError);
                 addNotification(`Could not fetch data: ${message}`, 'error');
-                console.error('Data fetch error:', error);
+                console.error('Data fetch error:', dataError);
                 setLoadError("There was a problem loading your data. This is often a database permissions (RLS) issue. Please ensure your Supabase project is set up correctly.");
                 setIsLoading(false);
                 return;
@@ -196,6 +206,27 @@ const App: React.FC = () => {
             
             setTransactions(transactionsResponse.data || []);
             setCalculations(calculationsResponse.data || []);
+            
+            if (servicesResponse.data && servicesResponse.data.length === 0) {
+                const defaultServices = [
+                    { name: 'Wheat Grinding', category: 'grinding', user_id: user.id },
+                    { name: 'Own Wheat Grinding', category: 'grinding', user_id: user.id },
+                    { name: 'Daliya Grinding', category: 'grinding', user_id: user.id },
+                    { name: 'Own Daliya Grinding', category: 'grinding', user_id: user.id },
+                    { name: 'Flour Sale', category: 'sale', user_id: user.id },
+                    { name: 'Daliya Sale', category: 'sale', user_id: user.id },
+                    { name: 'Other', category: 'other', user_id: user.id },
+                ];
+                const { data: insertedServices, error: insertError } = await supabase.from('services').insert(defaultServices).select();
+                if (insertError) {
+                    addNotification('Failed to create default services.', 'error');
+                } else {
+                    setServices(insertedServices || []);
+                }
+            } else {
+                setServices(servicesResponse.data || []);
+            }
+
             setIsLoading(false);
         };
 
@@ -331,6 +362,37 @@ const App: React.FC = () => {
             addNotification('Calculation deleted.', 'error');
         }
     };
+
+    const addService = async (data: Omit<Service, 'id' | 'created_at' | 'user_id'>) => {
+        if (!user) return;
+        const { data: dbData, error } = await supabase.from('services').insert({ ...data, user_id: user.id }).select().single();
+        if (error) {
+            addNotification(getErrorMessage(error), 'error');
+        } else {
+            setServices(prev => [...prev, dbData].sort((a, b) => a.name.localeCompare(b.name)));
+            addNotification('Service added!', 'success');
+        }
+    };
+
+    const updateService = async (updatedService: Service) => {
+        const { error } = await supabase.from('services').update(updatedService).eq('id', updatedService.id);
+        if (error) {
+            addNotification(getErrorMessage(error), 'error');
+        } else {
+            setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
+            addNotification('Service updated.', 'info');
+        }
+    };
+
+    const deleteService = async (id: string) => {
+        const { error } = await supabase.from('services').delete().eq('id', id);
+        if (error) {
+            addNotification(getErrorMessage(error), 'error');
+        } else {
+            setServices(prev => prev.filter(s => s.id !== id));
+            addNotification('Service deleted.', 'error');
+        }
+    };
     
     // Local-only mutations
     const handleSetReminder = (transactionId: string, remindAt: Date) => {
@@ -425,17 +487,17 @@ const App: React.FC = () => {
     }, [transactions, timeFilter, searchQuery, statusFilter, sortConfig]);
 
     // --- Page Rendering ---
-    // Memoize page components to prevent them from unmounting and losing state (like input focus) on re-render.
     const pageContent = useMemo(() => {
         switch (currentPage) {
             case 'dashboard': return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
             case 'transactions': return <TransactionsPage transactions={filteredTransactions} onEdit={openModal} onDelete={(id) => setTransactionToDelete(id)} onSetReminder={(t) => setTransactionForReminder(t)} reminders={reminders} sortConfig={sortConfig} setSortConfig={setSortConfig} timeFilter={timeFilter} setTimeFilter={setTimeFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} isEditMode={isEditMode} />;
+            case 'customers': return <CustomersPage transactions={transactions} />;
             case 'reports': return <ReportsPage transactions={transactions} isEditMode={isEditMode} />;
             case 'calculator': return <CalculatorPage calculations={calculations} onAddCalculation={addCalculation} onUpdateCalculation={updateCalculation} onDeleteCalculation={deleteCalculation} isEditMode={isEditMode} />;
-            case 'settings': return <SettingsPage currentSettings={settings} onSave={handleSaveSettings} isEditMode={isEditMode} />;
+            case 'settings': return <SettingsPage currentSettings={settings} onSave={handleSaveSettings} isEditMode={isEditMode} services={services} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />;
             default: return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
         }
-    }, [currentPage, filteredTransactions, timeFilter, searchQuery, statusFilter, sortConfig, transactions, calculations, reminders, settings, addCalculation, updateCalculation, deleteCalculation, handleSaveSettings, isEditMode]);
+    }, [currentPage, filteredTransactions, timeFilter, searchQuery, statusFilter, sortConfig, transactions, calculations, reminders, settings, addCalculation, updateCalculation, deleteCalculation, handleSaveSettings, isEditMode, services, addService, updateService, deleteService]);
     
     if (isLoading) {
         return (
@@ -473,6 +535,7 @@ const App: React.FC = () => {
                 setIsOpen={setIsSidebarOpen} 
                 currentPage={currentPage} 
                 setCurrentPage={setCurrentPage}
+                isEditMode={isEditMode}
             />
 
             <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
@@ -491,7 +554,7 @@ const App: React.FC = () => {
                 </main>
             </div>
 
-            {isModalOpen && <TransactionForm isOpen={isModalOpen} onClose={closeModal} onSubmit={editingTransaction ? updateTransaction : addTransaction} initialData={editingTransaction} prefilledData={prefilledData} />}
+            {isModalOpen && <TransactionForm isOpen={isModalOpen} onClose={closeModal} onSubmit={editingTransaction ? updateTransaction : addTransaction} initialData={editingTransaction} prefilledData={prefilledData} services={services} />}
             {transactionToDelete && <ConfirmationModal isOpen={!!transactionToDelete} onClose={() => setTransactionToDelete(null)} onConfirm={() => { if (transactionToDelete) deleteTransaction(transactionToDelete); }} title="Delete Transaction" message="Are you sure you want to delete this transaction? This action cannot be undone." />}
             {transactionForReminder && <ReminderModal isOpen={!!transactionForReminder} onClose={() => setTransactionForReminder(null)} onSetReminder={handleSetReminder} transaction={transactionForReminder} />}
             {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuthSuccess={handleAuthSuccess} />}

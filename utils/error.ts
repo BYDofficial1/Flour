@@ -1,8 +1,12 @@
 export const getErrorMessage = (error: unknown): string => {
     // Log the full error for debugging in a way that avoids "[object Object]".
-    // By logging the object on its own line, browser consoles can inspect it.
     console.error("Full error object received by error handler:");
-    console.error(error);
+    try {
+        console.error(JSON.stringify(error, null, 2));
+    } catch {
+        // Fallback if JSON.stringify fails (e.g., circular reference)
+        console.error(error);
+    }
 
     // Prioritize specific properties from Supabase/PostgREST which are often most descriptive.
     if (error && typeof error === 'object') {

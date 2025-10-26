@@ -15,17 +15,28 @@ interface ReportsPageProps {
     isEditMode: boolean;
 }
 
-const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-slate-800 p-6 rounded-xl shadow-md flex items-center space-x-4 border border-slate-700">
-        <div className="bg-primary-500/10 p-3 rounded-full">
+const StatCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode }> = ({ title, value, icon }) => (
+    <div className="bg-slate-800 p-4 rounded-xl shadow-md flex items-center space-x-4 border border-slate-700">
+        <div className="bg-primary-500/10 p-3 rounded-lg">
             {icon}
         </div>
         <div>
             <p className="text-sm text-slate-400 font-medium">{title}</p>
-            <div className="text-2xl font-bold text-slate-100">{value}</div>
+            <div className="text-xl font-bold text-slate-100">{value}</div>
         </div>
     </div>
 );
+
+const StatusBadge: React.FC<{ status: Transaction['payment_status'] }> = ({ status }) => {
+    const baseClasses = "px-2 py-0.5 text-xs font-semibold rounded-full capitalize";
+    const styles = {
+        paid: 'bg-green-500/20 text-green-300',
+        unpaid: 'bg-red-500/20 text-red-300',
+        partial: 'bg-yellow-500/20 text-yellow-300',
+    };
+    return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
+};
+
 
 type SortKey = 'date' | 'total' | 'customer_name';
 
@@ -137,73 +148,58 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, isEditMode }) =
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                 <DashboardCard 
+                 <StatCard 
                     title="Total Sales"
                     value={formatCurrency(stats.totalSales)}
-                    icon={<RupeeIcon className="text-primary-400" />}
+                    icon={<RupeeIcon className="text-primary-400 h-6 w-6" />}
                 />
-                <DashboardCard 
+                <StatCard 
                     title="Total Quantity"
                     value={`${stats.totalQuantity.toLocaleString()} kg`}
-                    icon={<WeightIcon className="text-primary-400" />}
+                    icon={<WeightIcon className="text-primary-400 h-6 w-6" />}
                 />
-                 <DashboardCard 
+                 <StatCard 
                     title="Total Due"
                     value={formatCurrency(stats.totalDue)}
-                    icon={<ExclamationCircleIcon className="text-red-400" />}
+                    icon={<ExclamationCircleIcon className="text-red-400 h-6 w-6" />}
                 />
-                <DashboardCard 
+                <StatCard 
                     title="Total Transactions"
                     value={stats.totalTransactions.toString()}
-                    icon={<ChartIcon className="text-primary-400" />}
+                    icon={<ChartIcon className="text-primary-400 h-6 w-6" />}
                 />
             </div>
 
-            <div className="bg-slate-800 p-4 rounded-lg shadow-md border border-slate-700">
+            <div className="bg-slate-800 p-4 rounded-xl shadow-md border border-slate-700">
                  <h3 className="text-lg font-bold text-slate-100 mb-4">
                     Transactions for {new Date(selectedDate + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}
                  </h3>
                  {monthlyTransactions.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-slate-400">
-                             <thead className="text-xs text-slate-300 uppercase bg-slate-900/70">
-                                <tr>
-                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer rounded-tl-lg" onClick={() => requestSort('date')}>
-                                        <div className="flex items-center">
-                                            Date
-                                            <SortIcon direction={getSortDirection('date')} />
-                                        </div>
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 font-semibold hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('customer_name')}>
-                                        <div className="flex items-center">
-                                            Customer
-                                            <SortIcon direction={getSortDirection('customer_name')} />
-                                        </div>
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 font-semibold">Item</th>
-                                    <th scope="col" className="px-4 py-3 font-semibold text-right">Quantity</th>
-                                    <th scope="col" className="px-4 py-3 font-semibold text-right hover:bg-slate-700/80 transition-colors cursor-pointer" onClick={() => requestSort('total')}>
-                                        <div className="flex items-center justify-end">
-                                            Total
-                                            <SortIcon direction={getSortDirection('total')} />
-                                        </div>
-                                    </th>
-                                    <th scope="col" className="px-4 py-3 font-semibold text-center rounded-tr-lg">Status</th>
-                                </tr>
-                             </thead>
-                             <tbody>
-                                {monthlyTransactions.map(t => (
-                                    <tr key={t.id} className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50">
-                                        <td className="px-4 py-3 whitespace-nowrap">{new Date(t.date).toLocaleDateString('en-CA')}</td>
-                                        <td className="px-4 py-3 font-medium text-slate-200">{t.customer_name}</td>
-                                        <td className="px-4 py-3">{t.item}</td>
-                                        <td className="px-4 py-3 text-right">{t.quantity.toFixed(2)} kg</td>
-                                        <td className="px-4 py-3 text-right font-semibold text-primary-400">{formatCurrency(t.total)}</td>
-                                        <td className="px-4 py-3 text-center capitalize">{t.payment_status}</td>
-                                    </tr>
-                                ))}
-                             </tbody>
-                        </table>
+                    <div className="space-y-3">
+                         {/* Header for sorting */}
+                        <div className="hidden lg:grid grid-cols-5 gap-4 px-4 text-xs text-slate-400 font-bold uppercase">
+                             <button onClick={() => requestSort('date')} className="flex items-center hover:text-white">Date <SortIcon direction={getSortDirection('date')} /></button>
+                             <button onClick={() => requestSort('customer_name')} className="col-span-2 flex items-center hover:text-white">Customer <SortIcon direction={getSortDirection('customer_name')} /></button>
+                             <button onClick={() => requestSort('total')} className="flex items-center justify-end hover:text-white">Total <SortIcon direction={getSortDirection('total')} /></button>
+                             <span className="text-right">Status</span>
+                        </div>
+                        {monthlyTransactions.map(t => (
+                            <div key={t.id} className="bg-slate-800/50 hover:bg-slate-700/50 transition-colors duration-200 p-4 rounded-lg grid grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-2 items-center text-sm">
+                                <div className="lg:col-span-1">
+                                    <p className="font-semibold text-slate-100">{new Date(t.date).toLocaleDateString('en-CA')}</p>
+                                </div>
+                               <div className="col-span-2 lg:col-span-2">
+                                    <p className="font-bold text-slate-100 truncate">{t.customer_name}</p>
+                                    <p className="text-slate-400 truncate">{t.item} - {t.quantity.toFixed(2)}kg</p>
+                               </div>
+                                <div className="lg:col-span-1 text-right">
+                                    <p className="font-bold text-primary-400">{formatCurrency(t.total)}</p>
+                               </div>
+                                <div className="lg:col-span-1 flex justify-end">
+                                    <StatusBadge status={t.payment_status} />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                  ) : (
                     <div className="text-center py-16 px-6">

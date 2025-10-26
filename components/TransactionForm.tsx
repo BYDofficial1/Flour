@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Transaction } from '../types';
+import type { Transaction, Service } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { formatCurrency } from '../utils/currency';
 
@@ -8,10 +8,9 @@ interface TransactionFormProps {
     onClose: () => void;
     onSubmit: (data: any) => void;
     initialData: Transaction | null;
+    services: Service[];
     prefilledData?: Partial<Transaction> | null;
 }
-
-const GRINDING_SERVICES = ['Wheat Grinding', 'Daliya Grinding'];
 
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <fieldset>
@@ -22,63 +21,99 @@ const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ t
     </fieldset>
 );
 
+const CheckboxInput: React.FC<{ id: string, label: string, checked: boolean, onChange: (checked: boolean) => void }> = ({ id, label, checked, onChange }) => (
+     <div className="flex items-center">
+        <input
+            type="checkbox"
+            id={id}
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 rounded bg-slate-800 border-slate-500 text-primary-500 focus:ring-primary-500"
+        />
+        <label htmlFor={id} className="ml-2 text-sm font-medium text-slate-300">{label}</label>
+    </div>
+);
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSubmit, initialData, prefilledData }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSubmit, initialData, services, prefilledData }) => {
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
-    const [item, setItem] = useState('Wheat Grinding');
+    const [item, setItem] = useState('');
     const [quantity, setQuantity] = useState('');
     const [rate, setRate] = useState('');
     const [grindingCost, setGrindingCost] = useState('');
     const [cleaningCost, setCleaningCost] = useState('');
     const [notes, setNotes] = useState('');
-    const [errors, setErrors] = useState<{ quantity?: string; rate?: string; grindingCost?: string, cleaningCost?: string, paidAmount?: string }>({});
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'partial'>('paid');
     const [paidAmount, setPaidAmount] = useState('');
+    
+    // New state for advanced features
+    const [flourTakenKg, setFlourTakenKg] = useState('');
+    const [isSettled, setIsSettled] = useState(false);
+    const [paidCleaningWithFlour, setPaidCleaningWithFlour] = useState(false);
+    const [paidGrindingWithFlour, setPaidGrindingWithFlour] = useState(false);
+    const [grindingCostFlourKg, setGrindingCostFlourKg] = useState('');
+    const [cleaningCostFlourKg, setCleaningCostFlourKg] = useState('');
+
 
     const isEditing = !!initialData;
-    const isGrindingService = GRINDING_SERVICES.includes(item);
+    const selectedService = services.find(s => s.name === item);
+    const isGrindingService = selectedService?.category === 'grinding';
 
-    const totalRaw = isGrindingService
-        ? (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0)
-        : (parseFloat(quantity) || 0) * (parseFloat(rate) || 0) + (parseFloat(grindingCost) || 0) + (parseFloat(cleaningCost) || 0);
+    // Recalculate total based on new logic
+    const total = React.useMemo(() => {
+        const saleAmount = isGrindingService ? 0 : (parseFloat(quantity) || 0) * (parseFloat(rate) || 0);
+        const grindingAmount = parseFloat(grindingCost) || 0;
+        const cleaningAmount = parseFloat(cleaningCost) || 0;
 
-    const total = Math.round((totalRaw + Number.EPSILON) * 100) / 100;
+        const totalRaw = saleAmount + grindingAmount + cleaningAmount;
+        return Math.round((totalRaw + Number.EPSILON) * 100) / 100;
+    }, [quantity, rate, grindingCost, cleaningCost, isGrindingService]);
+    
+    const flourRemaining = React.useMemo(() => {
+        const totalQuantity = parseFloat(quantity) || 0;
+        const takenByCustomer = parseFloat(flourTakenKg) || 0;
+        const usedForGrinding = paidGrindingWithFlour ? (parseFloat(grindingCostFlourKg) || 0) : 0;
+        const usedForCleaning = paidCleaningWithFlour ? (parseFloat(cleaningCostFlourKg) || 0) : 0;
+        return totalQuantity - takenByCustomer - usedForGrinding - usedForCleaning;
+    }, [quantity, flourTakenKg, paidGrindingWithFlour, grindingCostFlourKg, paidCleaningWithFlour, cleaningCostFlourKg]);
+
     const hasErrors = Object.values(errors).some(Boolean);
     
     useEffect(() => {
         if (isOpen) {
-            // Correctly handle date and time in user's local timezone
             const initialDate = initialData ? new Date(initialData.date) : new Date();
-
-            // Format date for the date input (YYYY-MM-DD)
             const year = initialDate.getFullYear();
             const month = String(initialDate.getMonth() + 1).padStart(2, '0');
             const day = String(initialDate.getDate()).padStart(2, '0');
             setDate(`${year}-${month}-${day}`);
-
-            // Format time for the time input (HH:MM)
             const hours = String(initialDate.getHours()).padStart(2, '0');
             const minutes = String(initialDate.getMinutes()).padStart(2, '0');
             setTime(`${hours}:${minutes}`);
 
             setCustomerName(initialData?.customer_name || prefilledData?.customer_name || '');
             setCustomerMobile(initialData?.customer_mobile || '');
-            setItem(initialData?.item || prefilledData?.item || 'Wheat Grinding');
+            setItem(initialData?.item || prefilledData?.item || (services.length > 0 ? services[0].name : ''));
             setQuantity(initialData?.quantity?.toString() || prefilledData?.quantity?.toString() || '');
             setRate(initialData?.rate?.toString() || prefilledData?.rate?.toString() || '');
             setGrindingCost(initialData?.grinding_cost?.toString() || '');
             setCleaningCost(initialData?.cleaning_cost?.toString() || '');
             setNotes(initialData?.notes || '');
-            
             setPaymentStatus(initialData?.payment_status || 'paid');
             setPaidAmount(initialData?.paid_amount?.toString() || '');
+            
+            setFlourTakenKg(initialData?.flour_taken_kg?.toString() || '0');
+            setIsSettled(initialData?.is_settled || false);
+            setPaidCleaningWithFlour(initialData?.paid_cleaning_with_flour || false);
+            setPaidGrindingWithFlour(initialData?.paid_grinding_with_flour || false);
+            setGrindingCostFlourKg(initialData?.grinding_cost_flour_kg?.toString() || '');
+            setCleaningCostFlourKg(initialData?.cleaning_cost_flour_kg?.toString() || '');
 
             setErrors({});
         }
-    }, [initialData, prefilledData, isOpen]);
+    }, [initialData, prefilledData, isOpen, services]);
 
     useEffect(() => {
         if (paymentStatus === 'paid') {
@@ -88,19 +123,23 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
         }
     }, [total, paymentStatus]);
     
-    const handleNumberChange = (value: string, field: 'quantity' | 'rate' | 'grindingCost' | 'cleaningCost' | 'paidAmount') => {
-        // Prevent negative signs from being part of the value.
-        if (value.startsWith('-')) {
-            return; // Simply don't update the state if a negative is typed.
-        }
+    // Fix: Moved setters object outside of handleNumberChange so it is in scope for the function signature.
+    const setters = {
+        quantity: setQuantity,
+        rate: setRate,
+        grindingCost: setGrindingCost,
+        cleaningCost: setCleaningCost,
+        paidAmount: setPaidAmount,
+        flourTakenKg: setFlourTakenKg,
+        grindingCostFlourKg: setGrindingCostFlourKg,
+        cleaningCostFlourKg: setCleaningCostFlourKg,
+    };
+    
+    const handleNumberChange = (value: string, field: keyof typeof setters) => {
+        if (value.startsWith('-')) return;
         
-        if (field === 'quantity') setQuantity(value);
-        if (field === 'rate') setRate(value);
-        if (field === 'grindingCost') setGrindingCost(value);
-        if (field === 'cleaningCost') setCleaningCost(value);
-        if (field === 'paidAmount') setPaidAmount(value);
+        setters[field](value);
 
-        // Clear any potential error for this field as we've blocked negative values.
         setErrors(prev => {
             const newErrors = { ...prev };
             delete newErrors[field];
@@ -114,8 +153,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
 
         const [year, month, day] = date.split('-').map(Number);
         const [hours, minutes] = (time || '00:00').split(':').map(Number);
-        // Create a new Date object using local time components to avoid timezone parsing issues.
-        // JavaScript months are 0-indexed, so we subtract 1 from the month.
         const localDate = new Date(year, month - 1, day, hours, minutes);
         
         const transactionData = {
@@ -131,6 +168,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             notes,
             payment_status: paymentStatus,
             paid_amount: paymentStatus === 'partial' ? parseFloat(paidAmount) || 0 : (paymentStatus === 'paid' ? total : 0),
+            
+            flour_taken_kg: parseFloat(flourTakenKg) || 0,
+            is_settled: isSettled,
+            paid_cleaning_with_flour: paidCleaningWithFlour,
+            paid_grinding_with_flour: paidGrindingWithFlour,
+            grinding_cost_flour_kg: parseFloat(grindingCostFlourKg) || 0,
+            cleaning_cost_flour_kg: parseFloat(cleaningCostFlourKg) || 0,
         };
         
         if(isEditing && initialData) {
@@ -188,11 +232,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                                 <div>
                                     <label htmlFor="item" className="block text-sm font-medium text-slate-300">Item / Service</label>
                                     <select id="item" value={item} onChange={e => setItem(e.target.value)} className={formInputClasses}>
-                                        <option>Wheat Grinding</option>
-                                        <option>Flour Sale</option>
-                                        <option>Daliya Grinding</option>
-                                        <option>Daliya Sale</option>
-                                        <option>Other</option>
+                                        {services.map(s => <option key={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -214,13 +254,27 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                                         <label htmlFor="grindingCost" className="block text-sm font-medium text-slate-300">{isGrindingService ? 'Total Grinding Cost' : 'Grinding Cost (Optional)'}</label>
                                         <input type="number" id="grindingCost" step="0.01" value={grindingCost} onChange={e => handleNumberChange(e.target.value, 'grindingCost')} required={isGrindingService} className={formInputClasses} />
                                         {errors.grindingCost && <p className="text-red-500 text-xs mt-1">{errors.grindingCost}</p>}
+                                        <CheckboxInput id="paidGrindingWithFlour" label="Paid with Flour" checked={paidGrindingWithFlour} onChange={setPaidGrindingWithFlour} />
+                                        {paidGrindingWithFlour && <div className="mt-2 pl-4"><label htmlFor="grindingCostFlourKg" className="text-xs text-slate-300">Flour (kg)</label><input type="number" id="grindingCostFlourKg" step="0.01" value={grindingCostFlourKg} onChange={e => handleNumberChange(e.target.value, 'grindingCostFlourKg')} className={formInputClasses} /></div>}
                                     </div>
                                     <div>
                                         <label htmlFor="cleaningCost" className="block text-sm font-medium text-slate-300">Cleaning Cost (Optional)</label>
                                         <input type="number" id="cleaningCost" step="0.01" value={cleaningCost} onChange={e => handleNumberChange(e.target.value, 'cleaningCost')} className={formInputClasses} />
                                         {errors.cleaningCost && <p className="text-red-500 text-xs mt-1">{errors.cleaningCost}</p>}
+                                        <CheckboxInput id="paidCleaningWithFlour" label="Paid with Flour" checked={paidCleaningWithFlour} onChange={setPaidCleaningWithFlour} />
+                                        {paidCleaningWithFlour && <div className="mt-2 pl-4"><label htmlFor="cleaningCostFlourKg" className="text-xs text-slate-300">Flour (kg)</label><input type="number" id="cleaningCostFlourKg" step="0.01" value={cleaningCostFlourKg} onChange={e => handleNumberChange(e.target.value, 'cleaningCostFlourKg')} className={formInputClasses} /></div>}
                                     </div>
                                 </div>
+                                {isGrindingService && (
+                                    <div>
+                                        <label htmlFor="flourTakenKg" className="block text-sm font-medium text-slate-300">Flour Taken by Customer (kg)</label>
+                                        <input type="number" id="flourTakenKg" step="0.01" value={flourTakenKg} onChange={e => handleNumberChange(e.target.value, 'flourTakenKg')} className={formInputClasses} />
+                                        {errors.flourTakenKg && <p className="text-red-500 text-xs mt-1">{errors.flourTakenKg}</p>}
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Remaining Flour: <span className="font-bold text-amber-400">{flourRemaining.toFixed(2)} kg</span>
+                                        </p>
+                                    </div>
+                                )}
                             </FormSection>
                         </div>
                         <div className="space-y-6 mt-6 lg:mt-0">
@@ -250,6 +304,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                                         {errors.paidAmount && <p className="text-red-500 text-xs mt-1">{errors.paidAmount}</p>}
                                     </div>
                                 )}
+                                <div className="!mt-6">
+                                    <CheckboxInput
+                                        id="isSettled"
+                                        label="Settle & Close Account (No further action needed)"
+                                        checked={isSettled}
+                                        onChange={setIsSettled}
+                                    />
+                                </div>
                             </FormSection>
                             
                             <FormSection title="Additional Info">
@@ -262,7 +324,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                    </div>
                     <div className="bg-slate-900/50 p-4 rounded-lg my-6 border border-slate-700">
                         <div className="flex justify-between items-center">
-                            <span className="font-semibold text-slate-300">Total Amount:</span>
+                            <span className="font-semibold text-slate-300">Cash Total Amount:</span>
                             <span className="text-2xl font-bold text-primary-400">{formatCurrency(total)}</span>
                         </div>
                     </div>

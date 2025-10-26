@@ -5,7 +5,6 @@ import type { Transaction } from '../types';
 import { ChartIcon } from './icons/ChartIcon';
 import { RupeeIcon } from './icons/RupeeIcon';
 import { WeightIcon } from './icons/WeightIcon';
-import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { formatCurrency } from '../utils/currency';
 import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
 

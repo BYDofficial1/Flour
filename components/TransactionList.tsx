@@ -7,6 +7,8 @@ import { EditIcon } from './icons/EditIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
 import { BellIcon } from './icons/BellIcon';
 import { PhoneIcon } from './icons/PhoneIcon';
+import { CheckCircleIcon } from './icons/CheckCircleIcon';
+import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
 
 interface TransactionListProps {
     transactions: Transaction[];
@@ -40,12 +42,13 @@ const getReminderStatus = (reminderDate: Date): { status: ReminderStatus, text: 
     return { status: 'upcoming', text: `${reminderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${timeText}` };
 };
 
-const StatusBadge: React.FC<{ status: Transaction['payment_status'] }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: Transaction['payment_status'] | 'settled' }> = ({ status }) => {
     const baseClasses = "px-2.5 py-1 text-xs font-bold rounded-full capitalize";
     const styles = {
         paid: 'bg-green-500/20 text-green-300',
         unpaid: 'bg-red-500/20 text-red-300',
         partial: 'bg-yellow-500/20 text-yellow-300',
+        settled: 'bg-blue-500/20 text-blue-300',
     };
     return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
 };
@@ -134,19 +137,35 @@ const TransactionCard: React.FC<{
 }> = ({ t, onEdit, onDelete, onSetReminder, reminder, isEditMode }) => {
     
     const balanceDue = t.total - (t.paid_amount || 0);
+    const isGrindingService = t.item.toLowerCase().includes('grinding');
+    
+    const flourUsedForCosts = (t.grinding_cost_flour_kg || 0) + (t.cleaning_cost_flour_kg || 0);
+    const flourRemaining = t.quantity - (t.flour_taken_kg || 0) - flourUsedForCosts;
 
-    const statusStyles: Record<Transaction['payment_status'], { border: string, bg: string }> = {
+    const statusStyles: Record<Transaction['payment_status'] | 'settled', { border: string, bg: string }> = {
         paid: { border: 'border-l-green-500/80', bg: 'bg-gradient-to-r from-green-500/10' },
         unpaid: { border: 'border-l-red-500/80', bg: 'bg-gradient-to-r from-red-500/10' },
         partial: { border: 'border-l-yellow-500/80', bg: 'bg-gradient-to-r from-yellow-500/10' },
+        settled: { border: 'border-l-blue-500/80', bg: 'bg-gradient-to-r from-blue-500/10' },
     };
     
+    const cardStatus = t.is_settled ? 'settled' : t.payment_status;
     const baseClasses = `bg-slate-800 rounded-xl shadow-lg hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden border-l-4`;
 
     const reminderInfo = reminder ? getReminderStatus(new Date(reminder.remindAt)) : null;
 
+    const CostDisplay: React.FC<{ cash?: number, paidWithFlour?: boolean, flour?: number }> = ({ cash, paidWithFlour, flour }) => {
+        const cashPart = cash ? formatCurrency(cash) : null;
+        const flourPart = paidWithFlour && flour ? `${flour.toFixed(2)} kg Flour` : null;
+
+        if (cashPart && flourPart) {
+            return <span>{cashPart} <span className="text-xs text-slate-400">&</span> {flourPart}</span>;
+        }
+        return <>{cashPart || flourPart || formatCurrency(0)}</>;
+    };
+
     return (
-        <div className={`${baseClasses} ${statusStyles[t.payment_status].border} ${statusStyles[t.payment_status].bg} via-slate-800 to-slate-800`}>
+        <div className={`${baseClasses} ${statusStyles[cardStatus].border} ${statusStyles[cardStatus].bg} via-slate-800 to-slate-800`}>
             {/* Section 1: Customer, Date, Actions */}
             <div className="p-4 flex justify-between items-start gap-4">
                <div className="flex-1 min-w-0">
@@ -181,12 +200,31 @@ const TransactionCard: React.FC<{
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
                         <DetailItem label="Quantity" value={`${t.quantity.toFixed(2)} kg`} />
                         <DetailItem label="Rate" value={`${formatCurrency(t.rate)}/kg`} />
-                        <DetailItem label="Grinding" value={formatCurrency(t.grinding_cost || 0)} />
-                        <DetailItem label="Cleaning" value={formatCurrency(t.cleaning_cost || 0)} />
+                        <DetailItem label="Grinding" value={<CostDisplay cash={t.grinding_cost} paidWithFlour={t.paid_grinding_with_flour} flour={t.grinding_cost_flour_kg} />} />
+                        <DetailItem label="Cleaning" value={<CostDisplay cash={t.cleaning_cost} paidWithFlour={t.paid_cleaning_with_flour} flour={t.cleaning_cost_flour_kg} />} />
                     </div>
                     {t.notes && <p className="text-xs italic text-slate-300 mt-3 pt-2 border-t border-slate-600/50">"{t.notes}"</p>}
                 </div>
             </div>
+
+            {isGrindingService && (
+                <div className="px-4 pb-4">
+                     <div className="bg-slate-700/50 p-3 rounded-lg grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <p className="text-xs text-slate-400">Total Flour</p>
+                            <p className="font-semibold text-slate-200">{t.quantity.toFixed(2)} kg</p>
+                        </div>
+                         <div>
+                            <p className="text-xs text-slate-400">Flour Taken</p>
+                            <p className="font-semibold text-slate-200">{(t.flour_taken_kg || 0).toFixed(2)} kg</p>
+                        </div>
+                         <div>
+                            <p className="text-xs text-slate-400">Remaining</p>
+                            <p className={`font-bold ${flourRemaining > 0 ? 'text-amber-400' : 'text-green-400'}`}>{flourRemaining.toFixed(2)} kg</p>
+                        </div>
+                    </div>
+                </div>
+            )}
              {reminderInfo && (
                 <div className="px-4 pb-4">
                     <div className={`flex items-center gap-2 p-2 rounded-lg text-sm bg-slate-700`}>
@@ -199,17 +237,17 @@ const TransactionCard: React.FC<{
             {/* Section 3: Payment Status & Totals */}
             <div className="p-4 bg-slate-900/40 border-t border-slate-700/50 flex justify-between items-center">
                 <div>
-                    <StatusBadge status={t.payment_status} />
+                    <StatusBadge status={cardStatus} />
                 </div>
                 <div className="text-right space-y-1">
-                    {t.payment_status !== 'paid' && balanceDue > 0 && (
+                    {cardStatus !== 'paid' && cardStatus !== 'settled' && balanceDue > 0 && (
                         <div>
                             <span className="text-slate-400 text-xs">DUE: </span>
                             <span className="font-bold text-base text-red-400">{formatCurrency(balanceDue)}</span>
                         </div>
                     )}
                      <div>
-                        <span className="text-slate-400 text-sm">TOTAL: </span>
+                        <span className="text-slate-400 text-sm">CASH TOTAL: </span>
                         <span className="font-bold text-xl text-primary-400">{formatCurrency(t.total)}</span>
                     </div>
                 </div>

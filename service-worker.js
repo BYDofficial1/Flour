@@ -7,8 +7,13 @@ const CACHE_FILES = [
     '/App.tsx',
     '/types.ts',
     
-    // Auth
+    // Auth & Security
     '/utils/supabase.ts',
+    '/components/AuthModal.tsx',
+    '/components/SecuritySetupModal.tsx',
+    '/components/ChangePinModal.tsx',
+    '/pages/AuthPage.tsx',
+    '/utils/security.ts',
     
     // Context
     '/context/NotificationContext.tsx',
@@ -21,18 +26,22 @@ const CACHE_FILES = [
 
     // Pages
     '/pages/CalculatorPage.tsx',
+    '/pages/CustomersPage.tsx',
     '/pages/DashboardPage.tsx',
-    '/pages/SettingsPage.tsx',
+    '/pages/ManagementPage.tsx',
     '/pages/ReportsPage.tsx',
+    '/pages/SettingsPage.tsx',
     '/pages/TransactionsPage.tsx',
 
     // Components
-    '/components/BulkActionBar.tsx',
+    '/components/Avatar.tsx',
     '/components/ChangeStatusModal.tsx',
     '/components/ConfirmationModal.tsx',
+    '/components/ConflictResolutionModal.tsx',
     '/components/DailySales.tsx',
     '/components/Dashboard.tsx',
     '/components/Header.tsx',
+    '/components/Navigation.tsx',
     '/components/ReminderModal.tsx',
     '/components/SalesChart.tsx',
     '/components/Sidebar.tsx',
@@ -43,10 +52,11 @@ const CACHE_FILES = [
     '/components/TransactionList.tsx',
 
     // Icons
+    '/components/icons/ArrowRightLeftIcon.tsx',
     '/components/icons/ArrowsUpDownIcon.tsx',
     '/components/icons/BellIcon.tsx',
-    '/components/icons/CalendarIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',
+    '/components/icons/CalendarIcon.tsx',
     '/components/icons/CameraIcon.tsx',
     '/components/icons/ChartIcon.tsx',
     '/components/icons/ChartPieIcon.tsx',
@@ -62,10 +72,16 @@ const CACHE_FILES = [
     '/components/icons/EditIcon.tsx',
     '/components/icons/ExclamationCircleIcon.tsx',
     '/components/icons/ExportIcon.tsx',
+    '/components/icons/EyeIcon.tsx',
+    '/components/icons/FingerprintIcon.tsx',
     '/components/icons/InformationCircleIcon.tsx',
+    '/components/icons/KeypadIcon.tsx',
     '/components/icons/ListBulletIcon.tsx',
+    '/components/icons/LockClosedIcon.tsx',
+    '/components/icons/LockOpenIcon.tsx',
     '/components/icons/LogoutIcon.tsx',
     '/components/icons/MenuIcon.tsx',
+    '/components/icons/PhoneIcon.tsx',
     '/components/icons/PlusIcon.tsx',
     '/components/icons/ReceiptIcon.tsx',
     '/components/icons/RupeeIcon.tsx',
@@ -73,10 +89,12 @@ const CACHE_FILES = [
     '/components/icons/SortIcon.tsx',
     '/components/icons/SyncIcon.tsx',
     '/components/icons/TrendingUpIcon.tsx',
+    '/components/icons/UserIcon.tsx',
     '/components/icons/WarningIcon.tsx',
     '/components/icons/WeightIcon.tsx',
     '/components/icons/WheatIcon.tsx',
     '/components/icons/WifiIcon.tsx',
+    '/components/icons/WrenchScrewdriverIcon.tsx',
 
     // External CDNs
     'https://aistudiocdn.com/react@18.2.0',

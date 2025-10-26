@@ -253,15 +253,19 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-slate-700">
-                    <div className="text-center space-y-2">
-                        <div>
+                    <div className="flex justify-around items-center text-center">
+                        <div className="w-1/2">
                             <p className="text-sm font-medium text-slate-300">Total Weight</p>
-                             <p className="text-2xl font-semibold text-slate-100">
-                                {calculation.totalMaunds} Maunds, {calculation.remainingKg.toFixed(2)} kg
-                                <span className="text-base text-slate-400 font-normal"> ({calculation.totalKg.toFixed(2)} kg)</span>
+                            <p className="text-4xl font-bold text-slate-100">
+                                {calculation.totalKg.toFixed(2)}
+                                <span className="text-xl font-medium text-slate-400"> kg</span>
+                            </p>
+                            <p className="text-base text-slate-400 mt-1">
+                                ({calculation.totalMaunds} Maunds, {calculation.remainingKg.toFixed(2)} kg)
                             </p>
                         </div>
-                        <div>
+                        <div className="h-16 w-px bg-slate-700"></div> {/* Vertical divider */}
+                        <div className="w-1/2">
                             <p className="text-sm font-medium text-slate-300">Total Price</p>
                             <p className="text-5xl font-bold text-primary-400 drop-shadow-glow">
                                 {formatCurrency(calculation.totalPrice)}
@@ -269,6 +273,7 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                         </div>
                     </div>
                 </div>
+
                  <div className="mt-8 pt-6 border-t border-slate-700 space-y-6">
                     <InputField
                         id="customerName"
@@ -306,42 +311,57 @@ const MultiWeightCalculator: React.FC<MultiWeightCalculatorProps> = ({ calculati
                 <div className="mt-10">
                     <h3 className="text-xl font-bold text-slate-200 mb-4">Saved Calculations</h3>
                     <div className="space-y-3">
-                        {calculations.map(calc => (
-                            <div key={calc.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 animate-[fadeIn_0.3s_ease-out]">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-slate-100 text-lg">{calc.customer_name || 'Unnamed Calculation'}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{new Date(calc.created_at).toLocaleString()}</p>
+                        {calculations.map(calc => {
+                             const totalMaunds = Math.floor(calc.total_kg / 40);
+                             const remainingKg = calc.total_kg % 40;
+                            return (
+                                <div key={calc.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700 animate-[fadeIn_0.3s_ease-out]">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-bold text-slate-100 text-lg">{calc.customer_name || 'Unnamed Calculation'}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{new Date(calc.created_at).toLocaleString()}</p>
+                                        </div>
+                                         <div className="flex items-center gap-1">
+                                            <button disabled={!isEditMode} onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Edit calculation for ${calc.customer_name || 'Unnamed'}`}>
+                                                <EditIcon />
+                                            </button>
+                                            <button disabled={!isEditMode} onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Delete calculation for ${calc.customer_name || 'Unnamed'}`}>
+                                                <DeleteIcon />
+                                            </button>
+                                        </div>
                                     </div>
-                                     <div className="flex items-center gap-1">
-                                        <button disabled={!isEditMode} onClick={() => handleEditClick(calc)} className="p-2 text-blue-400 rounded-full hover:bg-blue-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Edit calculation for ${calc.customer_name || 'Unnamed'}`}>
-                                            <EditIcon />
-                                        </button>
-                                        <button disabled={!isEditMode} onClick={() => onDeleteCalculation(calc.id)} className="p-2 text-red-400 rounded-full hover:bg-red-500/10 transition-colors disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:bg-transparent" aria-label={`Delete calculation for ${calc.customer_name || 'Unnamed'}`}>
-                                            <DeleteIcon />
-                                        </button>
+                                    {calc.notes && <p className="text-sm italic text-slate-300 my-2 p-2 bg-slate-700/50 rounded-md">"{calc.notes}"</p>}
+                                    <div className="flex flex-wrap gap-1 my-2">
+                                        {calc.bags.map((bag, index) => (
+                                            <span key={index} className="bg-slate-600 text-xs font-mono px-2 py-1 rounded">
+                                                {bag.weight.toFixed(2)}kg
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-3 gap-2 text-center items-center">
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-medium">Total KG</p>
+                                            <p className="font-bold text-slate-100 text-lg">
+                                                {calc.total_kg.toFixed(2)} <span className="text-sm font-normal text-slate-300">kg</span>
+                                            </p>
+                                        </div>
+                                        <div className="border-x border-slate-700 px-2">
+                                            <p className="text-xs text-slate-400 font-medium">Breakdown</p>
+                                            <p className="font-semibold text-slate-200 text-base leading-tight">
+                                                {totalMaunds} <span className="text-xs text-slate-300">Maunds</span>
+                                                , {remainingKg.toFixed(2)} <span className="text-xs text-slate-300">kg</span>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-medium">Total Price</p>
+                                            <p className="font-bold text-primary-400 text-lg">
+                                                {formatCurrency(calc.total_price)}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                                {calc.notes && <p className="text-sm italic text-slate-300 my-2 p-2 bg-slate-700/50 rounded-md">"{calc.notes}"</p>}
-                                <div className="flex flex-wrap gap-1 my-2">
-                                    {calc.bags.map((bag, index) => (
-                                        <span key={index} className="bg-slate-600 text-xs font-mono px-2 py-1 rounded">
-                                            {bag.weight.toFixed(2)}kg
-                                        </span>
-                                    ))}
-                                </div>
-                                <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-4 text-center">
-                                    <div>
-                                        <p className="text-xs text-slate-400">Total Weight</p>
-                                        <p className="font-semibold text-slate-200">{calc.total_kg.toFixed(2)} kg</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-400">Total Price</p>
-                                        <p className="font-bold text-primary-400 text-lg">{formatCurrency(calc.total_price)}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             )}
