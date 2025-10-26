@@ -9,12 +9,11 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
-import CustomersPage from './pages/CustomersPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ReminderModal from './components/ReminderModal';
 import { useNotifier } from './context/NotificationContext';
-import { playNotificationSound } from './utils/sound';
+import { playNotificationSound, SoundType } from './utils/sound';
 import { getErrorMessage } from './utils/error';
 import { SyncIcon } from './components/icons/SyncIcon';
 import { ExclamationCircleIcon } from './components/icons/ExclamationCircleIcon';
@@ -22,7 +21,7 @@ import { formatCurrency } from './utils/currency';
 import { PlusIcon } from './components/icons/PlusIcon';
 import AuthModal from './components/AuthModal';
 
-export type Page = 'transactions' | 'dashboard' | 'customers' | 'reports' | 'calculator' | 'settings';
+export type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -64,6 +63,13 @@ const App: React.FC = () => {
 
     const [isEditMode, setIsEditMode] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+    const notify = useCallback((message: string, type: SoundType) => {
+        addNotification(message, type);
+        if (settings.soundEnabled) {
+            playNotificationSound(type);
+        }
+    }, [addNotification, settings.soundEnabled]);
     
     // --- Auth & Session Management ---
     useEffect(() => {
@@ -98,7 +104,7 @@ const App: React.FC = () => {
                     if (signUpError) {
                         console.error('Public user sign-up also failed:', signUpError.message);
                         const errorMsg = 'Failed to initialize the public session. This might be a network issue or a problem with the backend configuration (RLS policies).';
-                        addNotification(errorMsg, 'error');
+                        notify(errorMsg, 'error');
                         setLoadError(errorMsg);
                         setIsLoading(false); // Auth failed, stop loading and show error.
                     }
@@ -114,7 +120,7 @@ const App: React.FC = () => {
         return () => {
             subscription.unsubscribe();
         };
-    }, [addNotification]);
+    }, [notify]);
 
 
     // --- Online/Offline Status ---
@@ -197,7 +203,7 @@ const App: React.FC = () => {
             const dataError = transactionsResponse.error || calculationsResponse.error || servicesResponse.error;
             if (dataError) {
                 const message = getErrorMessage(dataError);
-                addNotification(`Could not fetch data: ${message}`, 'error');
+                notify(`Could not fetch data: ${message}`, 'error');
                 console.error('Data fetch error:', dataError);
                 setLoadError("There was a problem loading your data. This is often a database permissions (RLS) issue. Please ensure your Supabase project is set up correctly.");
                 setIsLoading(false);
@@ -219,7 +225,7 @@ const App: React.FC = () => {
                 ];
                 const { data: insertedServices, error: insertError } = await supabase.from('services').insert(defaultServices).select();
                 if (insertError) {
-                    addNotification('Failed to create default services.', 'error');
+                    notify('Failed to create default services.', 'error');
                 } else {
                     setServices(insertedServices || []);
                 }
@@ -231,13 +237,13 @@ const App: React.FC = () => {
         };
 
         fetchData();
-    }, [user, addNotification]);
+    }, [user, notify]);
 
 
     // --- Data Mutation ---
     const addTransaction = async (data: Omit<Transaction, 'id' | 'updated_at' | 'user_id'>) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
         if (!user) return;
@@ -254,19 +260,18 @@ const App: React.FC = () => {
         if (error) {
             const message = getErrorMessage(error);
             console.error('Error adding transaction:', error);
-            addNotification(`Save failed: ${message}`, 'error');
+            notify(`Save failed: ${message}`, 'error');
             setTransactions(prev => prev.filter(t => t.id !== tempId));
         } else {
-            addNotification('Transaction added!', 'success');
+            notify(`Transaction for ${data.customer_name} added!`, 'success');
             setTransactions(prev => prev.map(t => t.id === tempId ? dbData : t));
         }
-        if (settings.soundEnabled) playNotificationSound();
         closeModal();
     };
 
     const updateTransaction = async (updatedTransaction: Transaction) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
         const finalTransaction = { ...updatedTransaction, updated_at: new Date().toISOString() };
@@ -281,20 +286,21 @@ const App: React.FC = () => {
         if (error) {
             const message = getErrorMessage(error);
             console.error('Error updating transaction:', error);
-            addNotification(`Update failed: ${message}`, 'error');
+            notify(`Update failed: ${message}`, 'error');
             setTransactions(originalTransactions);
         } else {
-            addNotification('Transaction updated.', 'info');
+            notify(`Transaction for ${updatedTransaction.customer_name} updated.`, 'info');
         }
         closeModal();
     };
 
     const deleteTransaction = async (id: string) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
         const originalTransactions = transactions;
+        const transactionToDeleteData = originalTransactions.find(t => t.id === id);
         setTransactions(prev => prev.filter(t => t.id !== id));
         
         setIsSyncing(true);
@@ -304,17 +310,18 @@ const App: React.FC = () => {
         if (error) {
             const message = getErrorMessage(error);
             console.error('Error deleting transaction:', error);
-            addNotification(`Delete failed: ${message}`, 'error');
+            notify(`Delete failed: ${message}`, 'error');
             setTransactions(originalTransactions);
         } else {
-            addNotification('Transaction deleted.', 'error');
+            const customerName = transactionToDeleteData ? ` for ${transactionToDeleteData.customer_name}` : '';
+            notify(`Transaction${customerName} deleted.`, 'info');
         }
         setTransactionToDelete(null);
     };
 
     const addCalculation = async (data: Omit<Calculation, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
         if (!user) return;
@@ -323,17 +330,17 @@ const App: React.FC = () => {
 
         if (error) {
             const message = getErrorMessage(error);
-            addNotification(`Save failed: ${message}`, 'error');
+            notify(`Save failed: ${message}`, 'error');
         } else {
             setCalculations(prev => [dbData, ...prev]);
-            addNotification('Calculation saved!', 'success');
-            if (settings.soundEnabled) playNotificationSound();
+            const calcName = data.customer_name || 'Unnamed Calculation';
+            notify(`Calculation for ${calcName} saved!`, 'success');
         }
     };
 
     const updateCalculation = async (updatedCalc: Calculation) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
         const finalCalc = { ...updatedCalc, updated_at: new Date().toISOString() };
@@ -341,25 +348,32 @@ const App: React.FC = () => {
 
         if (error) {
             const message = getErrorMessage(error);
-            addNotification(`Update failed: ${message}`, 'error');
+            notify(`Update failed: ${message}`, 'error');
         } else {
             setCalculations(prev => prev.map(c => c.id === finalCalc.id ? finalCalc : c));
-            addNotification('Calculation updated.', 'info');
+            const calcName = updatedCalc.customer_name || 'Unnamed Calculation';
+            notify(`Calculation for ${calcName} updated.`, 'info');
         }
     };
 
     const deleteCalculation = async (id: string) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to make changes.', 'error');
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
             return;
         }
+        const originalCalculations = calculations;
+        const calcToDelete = originalCalculations.find(c => c.id === id);
+        setCalculations(prev => prev.filter(c => c.id !== id));
+
         const { error } = await supabase.from('calculations').delete().eq('id', id);
+
         if (error) {
             const message = getErrorMessage(error);
-            addNotification(`Delete failed: ${message}`, 'error');
+            notify(`Delete failed: ${message}`, 'error');
+            setCalculations(originalCalculations);
         } else {
-            setCalculations(prev => prev.filter(c => c.id !== id));
-            addNotification('Calculation deleted.', 'error');
+            const calcName = calcToDelete?.customer_name || 'Unnamed Calculation';
+            notify(`${calcName} deleted.`, 'info');
         }
     };
 
@@ -367,30 +381,35 @@ const App: React.FC = () => {
         if (!user) return;
         const { data: dbData, error } = await supabase.from('services').insert({ ...data, user_id: user.id }).select().single();
         if (error) {
-            addNotification(getErrorMessage(error), 'error');
+            notify(getErrorMessage(error), 'error');
         } else {
             setServices(prev => [...prev, dbData].sort((a, b) => a.name.localeCompare(b.name)));
-            addNotification('Service added!', 'success');
+            notify(`Service "${data.name}" added!`, 'success');
         }
     };
 
     const updateService = async (updatedService: Service) => {
         const { error } = await supabase.from('services').update(updatedService).eq('id', updatedService.id);
         if (error) {
-            addNotification(getErrorMessage(error), 'error');
+            notify(getErrorMessage(error), 'error');
         } else {
             setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
-            addNotification('Service updated.', 'info');
+            notify(`Service "${updatedService.name}" updated.`, 'info');
         }
     };
 
     const deleteService = async (id: string) => {
+        const originalServices = services;
+        const serviceToDelete = originalServices.find(s => s.id === id);
+        setServices(prev => prev.filter(s => s.id !== id));
+
         const { error } = await supabase.from('services').delete().eq('id', id);
+        
         if (error) {
-            addNotification(getErrorMessage(error), 'error');
+            notify(getErrorMessage(error), 'error');
+            setServices(originalServices);
         } else {
-            setServices(prev => prev.filter(s => s.id !== id));
-            addNotification('Service deleted.', 'error');
+            notify(`Service "${serviceToDelete?.name || 'Unknown'}" deleted.`, 'info');
         }
     };
     
@@ -400,19 +419,19 @@ const App: React.FC = () => {
         const newReminders = [...reminders.filter(r => r.transactionId !== transactionId), newReminder];
         setReminders(newReminders);
         localStorage.setItem('reminders', JSON.stringify(newReminders));
-        addNotification('Reminder set!', 'success');
+        notify('Reminder set!', 'success');
         setTransactionForReminder(null);
     };
 
     const handleSaveSettings = (newSettings: Settings) => {
         if (!isEditMode) {
-            addNotification('Edit mode is locked. Please unlock to save settings.', 'error');
+            notify('Edit mode is locked. Please unlock to save settings.', 'error');
             return;
         }
         setSettings(newSettings);
         localStorage.setItem('settings', JSON.stringify(newSettings));
         document.documentElement.className = `theme-${newSettings.theme}`;
-        addNotification('Settings saved!', 'success');
+        notify('Settings saved!', 'success');
     };
     
     // --- UI Actions ---
@@ -431,7 +450,7 @@ const App: React.FC = () => {
     const handleToggleEditMode = () => {
         if (isEditMode) {
             setIsEditMode(false);
-            addNotification('Edit Mode Locked.', 'info');
+            notify('Edit Mode Locked.', 'info');
         } else {
             setIsAuthModalOpen(true);
         }
@@ -440,7 +459,7 @@ const App: React.FC = () => {
     const handleAuthSuccess = () => {
         setIsEditMode(true);
         setIsAuthModalOpen(false);
-        addNotification('Edit Mode Unlocked!', 'success');
+        notify('Edit Mode Unlocked!', 'success');
     };
 
     // --- Filtering & Sorting ---
@@ -491,7 +510,6 @@ const App: React.FC = () => {
         switch (currentPage) {
             case 'dashboard': return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
             case 'transactions': return <TransactionsPage transactions={filteredTransactions} onEdit={openModal} onDelete={(id) => setTransactionToDelete(id)} onSetReminder={(t) => setTransactionForReminder(t)} reminders={reminders} sortConfig={sortConfig} setSortConfig={setSortConfig} timeFilter={timeFilter} setTimeFilter={setTimeFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} isEditMode={isEditMode} />;
-            case 'customers': return <CustomersPage transactions={transactions} />;
             case 'reports': return <ReportsPage transactions={transactions} isEditMode={isEditMode} />;
             case 'calculator': return <CalculatorPage calculations={calculations} onAddCalculation={addCalculation} onUpdateCalculation={updateCalculation} onDeleteCalculation={deleteCalculation} isEditMode={isEditMode} />;
             case 'settings': return <SettingsPage currentSettings={settings} onSave={handleSaveSettings} isEditMode={isEditMode} services={services} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />;

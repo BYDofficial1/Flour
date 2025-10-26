@@ -6,10 +6,9 @@ import { WheatIcon } from './icons/WheatIcon';
 import { CalculatorIcon } from './icons/CalculatorIcon';
 import { DocumentTextIcon } from './icons/DocumentTextIcon';
 import { useNotifier } from '../context/NotificationContext';
-import { UserIcon } from './icons/UserIcon';
 import { CogIcon } from './icons/CogIcon';
 
-type Page = 'transactions' | 'dashboard' | 'customers' | 'reports' | 'calculator' | 'settings';
+type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -81,7 +80,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                         <ul className="space-y-2">
                              <NavItem label="Dashboard" icon={<ChartIcon className="h-5 w-5" />} isActive={currentPage === 'dashboard'} onClick={() => handleNavigation('dashboard')} />
                              <NavItem label="Transactions" icon={<ListBulletIcon />} isActive={currentPage === 'transactions'} onClick={() => handleNavigation('transactions')} />
-                             <NavItem label="Customers" icon={<UserIcon />} isActive={currentPage === 'customers'} onClick={() => handleNavigation('customers')} />
                              <NavItem label="Reports" icon={<DocumentTextIcon />} isActive={currentPage === 'reports'} onClick={() => handleNavigation('reports')} />
                              <NavItem label="Calculator" icon={<CalculatorIcon />} isActive={currentPage === 'calculator'} onClick={() => handleNavigation('calculator')} />
                         </ul>

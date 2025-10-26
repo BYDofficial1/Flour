@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { Settings, Theme, Service } from '../types';
 import { useNotifier } from '../context/NotificationContext';
 import ManagementPage from './ManagementPage';
+import { subscribeUser, unsubscribeUser } from '../utils/push';
+import { getErrorMessage } from '../utils/error';
 
 interface SettingsPageProps {
     currentSettings: Settings;
@@ -72,12 +74,29 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
     const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
-
+    const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+    const [isPushLoading, setIsPushLoading] = useState(true);
 
     useEffect(() => {
         setSettings(currentSettings);
     }, [currentSettings]);
     
+    useEffect(() => {
+        const checkSubscription = async () => {
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.getSubscription();
+                    setIsPushSubscribed(!!subscription);
+                } catch (error) {
+                    console.error("Error checking for push subscription:", error);
+                }
+            }
+            setIsPushLoading(false);
+        };
+        checkSubscription();
+    }, []);
+
     const handleNotificationRequest = useCallback(() => {
         if (!('Notification' in window)) {
             addNotification('This browser does not support desktop notifications.', 'error');
@@ -108,6 +127,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
 
     const handleSettingChange = (key: keyof Settings, value: any) => {
         setSettings(prev => ({ ...prev, [key]: value }));
+    };
+    
+    const handlePushSubscriptionToggle = async () => {
+        if (!isEditMode) {
+            addNotification('Unlock Edit Mode to change notification settings.', 'error');
+            return;
+        }
+        setIsPushLoading(true);
+        try {
+            if (isPushSubscribed) {
+                await unsubscribeUser();
+                setIsPushSubscribed(false);
+                addNotification('Push notifications disabled.', 'info');
+            } else {
+                await subscribeUser();
+                setIsPushSubscribed(true);
+                addNotification('Push notifications enabled! A backend function is required to send alerts.', 'success');
+            }
+        } catch (error) {
+            console.error('Failed to toggle push subscription', error);
+            addNotification(getErrorMessage(error), 'error');
+            // Re-check state in case of failure
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                setIsPushSubscribed(!!subscription);
+            }
+        } finally {
+            setIsPushLoading(false);
+        }
     };
 
     const getPermissionButton = () => {
@@ -144,8 +193,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                         </SettingItem>
                          <div className="border-t border-slate-700/50" />
                         <SettingItem
-                            label="Push Notifications"
-                            description="Get reminders for due transactions on your device."
+                            label="In-App Reminders"
+                            description="Get reminders for due transactions when the app is open."
                         >
                              <button
                                 onClick={handleNotificationRequest}
@@ -153,6 +202,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                                 className={`px-4 py-2 text-sm font-semibold rounded-lg shadow-md transition-colors ${permissionButton.className}`}
                             >
                                 {permissionButton.text}
+                            </button>
+                        </SettingItem>
+                        <div className="border-t border-slate-700/50" />
+                        <SettingItem
+                            label="Background Push Notifications"
+                            description="Receive alerts for new transactions even when the app is closed. Requires a backend setup to send notifications."
+                        >
+                             <button
+                                onClick={handlePushSubscriptionToggle}
+                                disabled={isPushLoading || !isEditMode}
+                                title={!isEditMode ? "Unlock Edit Mode to change settings" : ""}
+                                className={`px-4 py-2 text-sm font-semibold rounded-lg shadow-md transition-colors w-48 text-center disabled:cursor-not-allowed ${
+                                    isPushLoading ? 'bg-slate-500/50' :
+                                    isPushSubscribed ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-primary-500 text-white hover:bg-primary-600'
+                                } ${!isEditMode && !isPushLoading ? 'bg-slate-500/50' : ''}`}
+                            >
+                                {isPushLoading ? 'Please wait...' : isPushSubscribed ? 'Disable Notifications' : 'Enable Notifications'}
                             </button>
                         </SettingItem>
                     </SettingsCategory>

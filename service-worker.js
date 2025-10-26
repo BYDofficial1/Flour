@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v16'; // Bumped version for new auth flow
+const CACHE_NAME = 'atta-chakki-hisab-v17'; // Bumped version for new auth flow
 const CACHE_FILES = [
     // Core
     '/',
@@ -23,10 +23,10 @@ const CACHE_FILES = [
     '/utils/error.ts',
     '/utils/export.ts',
     '/utils/sound.ts',
+    '/utils/push.ts',
 
     // Pages
     '/pages/CalculatorPage.tsx',
-    '/pages/CustomersPage.tsx',
     '/pages/DashboardPage.tsx',
     '/pages/ManagementPage.tsx',
     '/pages/ReportsPage.tsx',
@@ -89,7 +89,6 @@ const CACHE_FILES = [
     '/components/icons/SortIcon.tsx',
     '/components/icons/SyncIcon.tsx',
     '/components/icons/TrendingUpIcon.tsx',
-    '/components/icons/UserIcon.tsx',
     '/components/icons/WarningIcon.tsx',
     '/components/icons/WeightIcon.tsx',
     '/components/icons/WheatIcon.tsx',
@@ -167,5 +166,42 @@ self.addEventListener('fetch', event => {
                     console.error('Fetch failed; returning offline fallback if available.', event.request.url, error);
                 });
             })
+    );
+});
+
+self.addEventListener('push', event => {
+    console.log('[Service Worker] Push Received.');
+    
+    let data;
+    try {
+        data = event.data.json();
+    } catch (e) {
+        data = { title: 'New Update', body: event.data.text() };
+    }
+
+    const title = data.title || 'Atta Chakki Hisab';
+    const options = {
+        body: data.body || 'Something new happened!',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12c0-2.5-2.5-6-2.5-6s-2.5 3.5-2.5 6c0 2.2-1.8 4-4 4s-4-1.8-4-4c0-2.5-2.5-6-2.5-6S4 9.5 4 12c0 4.4 3.6 8 8 8s8-3.6 8-8z" /><path d="M12 2v2" /><path d="M11 2.5a.5.5 0 0 1 1 0V4a.5.5 0 0 1-1 0z" /><path d="M13 2.5a.5.5 0 0 0-1 0V4a.5.5 0 0 0 1 0z" /><path d="M14 4.5s-1-1.5-1-3.5" /><path d="M10 4.5s1-1.5 1-3.5" /></svg>',
+        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12c0-2.5-2.5-6-2.5-6s-2.5 3.5-2.5 6c0 2.2-1.8 4-4 4s-4-1.8-4-4c0-2.5-2.5-6-2.5-6S4 9.5 4 12c0 4.4 3.6 8 8 8s8-3.6 8-8z" /></svg>',
+        tag: 'chakki-notification' // So new notifications replace old ones
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+    console.log('[Service Worker] Notification click Received.');
+    event.notification.close();
+
+    // This looks for an existing window and focuses it.
+    // If no window is open, it opens a new one.
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            for (const client of clientList) {
+                if ('focus' in client) return client.focus();
+            }
+            if (clients.openWindow) return clients.openWindow('/');
+        })
     );
 });
