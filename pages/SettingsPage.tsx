@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Settings, Theme, Service } from '../types';
+import type { Settings, Theme, Service, ExpenseCategory } from '../types';
 import { useNotifier } from '../context/NotificationContext';
 import ManagementPage from './ManagementPage';
 import { subscribeUser, unsubscribeUser } from '../utils/push';
 import { getErrorMessage } from '../utils/error';
+import ExpenseCategoryManagement from '../components/ExpenseCategoryManagement';
 
 interface SettingsPageProps {
     currentSettings: Settings;
@@ -13,6 +14,10 @@ interface SettingsPageProps {
     onAddService: (service: Omit<Service, 'id' | 'created_at' | 'user_id'>) => void;
     onUpdateService: (service: Service) => void;
     onDeleteService: (id: string) => void;
+    expenseCategories: ExpenseCategory[];
+    onAddExpenseCategory: (category: Omit<ExpenseCategory, 'id' | 'created_at' | 'user_id'>) => void;
+    onUpdateExpenseCategory: (category: ExpenseCategory) => void;
+    onDeleteExpenseCategory: (id: string) => void;
 }
 
 const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; }> = ({ enabled, onChange }) => (
@@ -69,11 +74,24 @@ const SettingItem: React.FC<{ label: string; description?: string; children: Rea
 );
 
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, isEditMode, services, onAddService, onUpdateService, onDeleteService }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ 
+    currentSettings, 
+    onSave, 
+    isEditMode, 
+    services, 
+    onAddService, 
+    onUpdateService, 
+    onDeleteService,
+    expenseCategories,
+    onAddExpenseCategory,
+    onUpdateExpenseCategory,
+    onDeleteExpenseCategory
+}) => {
     const { addNotification } = useNotifier();
     const [settings, setSettings] = useState<Settings>(currentSettings);
     const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
-    const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
+    const [isServiceManagementOpen, setIsServiceManagementOpen] = useState(false);
+    const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
     const [isPushSubscribed, setIsPushSubscribed] = useState(false);
     const [isPushLoading, setIsPushLoading] = useState(true);
 
@@ -246,16 +264,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                     </SettingsCategory>
                     
                     <SettingsCategory
-                        title="Service Management"
-                        description="Add, edit, or remove the services and items you offer. This will update the options in the transaction form."
+                        title="Data Management"
+                        description="Manage the services and expense categories for your business."
                     >
-                         <div className="text-center">
+                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <button
-                                onClick={() => setIsManagementModalOpen(true)}
+                                onClick={() => setIsServiceManagementOpen(true)}
                                 disabled={!isEditMode}
-                                className="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                className="w-full sm:w-auto px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed"
                             >
                                 Manage Services
+                            </button>
+                             <button
+                                onClick={() => setIsCategoryManagementOpen(true)}
+                                disabled={!isEditMode}
+                                className="w-full sm:w-auto px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                Manage Expense Categories
                             </button>
                         </div>
                     </SettingsCategory>
@@ -273,12 +298,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ currentSettings, onSave, is
                 </div>
             </div>
             <ManagementPage 
-                isOpen={isManagementModalOpen}
-                onClose={() => setIsManagementModalOpen(false)}
+                isOpen={isServiceManagementOpen}
+                onClose={() => setIsServiceManagementOpen(false)}
                 services={services}
                 onAddService={onAddService}
                 onUpdateService={onUpdateService}
                 onDeleteService={onDeleteService}
+                isEditMode={isEditMode}
+            />
+            <ExpenseCategoryManagement
+                isOpen={isCategoryManagementOpen}
+                onClose={() => setIsCategoryManagementOpen(false)}
+                categories={expenseCategories}
+                onAddCategory={onAddExpenseCategory}
+                onUpdateCategory={onUpdateExpenseCategory}
+                onDeleteCategory={onDeleteExpenseCategory}
                 isEditMode={isEditMode}
             />
         </>

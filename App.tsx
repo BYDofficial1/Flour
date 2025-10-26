@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './utils/supabase';
-import type { Transaction, Reminder, Settings, Calculation, Service } from './types';
+import type { Transaction, Reminder, Settings, Calculation, Service, Expense, ExpenseCategory } from './types';
 import Header from './components/Header';
 import TransactionForm from './components/TransactionForm';
 import DashboardPage from './pages/DashboardPage';
@@ -9,6 +9,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import CalculatorPage from './pages/CalculatorPage';
 import SettingsPage from './pages/SettingsPage';
 import ReportsPage from './pages/ReportsPage';
+import ExpensesPage from './pages/ExpensesPage';
 import Sidebar from './components/Sidebar';
 import ConfirmationModal from './components/ConfirmationModal';
 import ReminderModal from './components/ReminderModal';
@@ -21,7 +22,7 @@ import { formatCurrency } from './utils/currency';
 import { PlusIcon } from './components/icons/PlusIcon';
 import AuthModal from './components/AuthModal';
 
-export type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings';
+export type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings' | 'expenses';
 export type TimeFilter = {
     period: TimePeriod;
     startDate?: string;
@@ -44,6 +45,8 @@ const App: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [calculations, setCalculations] = useState<Calculation[]>([]);
     const [services, setServices] = useState<Service[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>(() => JSON.parse(localStorage.getItem('reminders') || '[]'));
     const [settings, setSettings] = useState<Settings>(() => JSON.parse(localStorage.getItem('settings') || JSON.stringify({ soundEnabled: true, theme: 'green' })));
     
@@ -192,15 +195,17 @@ const App: React.FC = () => {
             setLoadError(null);
             setIsSyncing(true);
 
-            const [transactionsResponse, calculationsResponse, servicesResponse] = await Promise.all([
+            const [transactionsResponse, calculationsResponse, servicesResponse, expensesResponse, expenseCategoriesResponse] = await Promise.all([
                 supabase.from('transactions').select('*').order('date', { ascending: false }),
                 supabase.from('calculations').select('*').order('created_at', { ascending: false }),
-                supabase.from('services').select('*').order('name', { ascending: true })
+                supabase.from('services').select('*').order('name', { ascending: true }),
+                supabase.from('expenses').select('*').order('date', { ascending: false }),
+                supabase.from('expense_categories').select('*').order('name', { ascending: true })
             ]);
 
             setIsSyncing(false);
 
-            const dataError = transactionsResponse.error || calculationsResponse.error || servicesResponse.error;
+            const dataError = transactionsResponse.error || calculationsResponse.error || servicesResponse.error || expensesResponse.error || expenseCategoriesResponse.error;
             if (dataError) {
                 const message = getErrorMessage(dataError);
                 notify(`Could not fetch data: ${message}`, 'error');
@@ -212,6 +217,7 @@ const App: React.FC = () => {
             
             setTransactions(transactionsResponse.data || []);
             setCalculations(calculationsResponse.data || []);
+            setExpenses(expensesResponse.data || []);
             
             if (servicesResponse.data && servicesResponse.data.length === 0) {
                 const defaultServices = [
@@ -231,6 +237,24 @@ const App: React.FC = () => {
                 }
             } else {
                 setServices(servicesResponse.data || []);
+            }
+
+            if (expenseCategoriesResponse.data && expenseCategoriesResponse.data.length === 0) {
+                const defaultCategories = [
+                    { name: 'Utilities', user_id: user.id },
+                    { name: 'Maintenance', user_id: user.id },
+                    { name: 'Supplies', user_id: user.id },
+                    { name: 'Repairs', user_id: user.id },
+                    { name: 'Other', user_id: user.id },
+                ];
+                const { data: insertedCategories, error: insertError } = await supabase.from('expense_categories').insert(defaultCategories).select();
+                if (insertError) {
+                    notify('Failed to create default expense categories.', 'error');
+                } else {
+                    setExpenseCategories(insertedCategories || []);
+                }
+            } else {
+                setExpenseCategories(expenseCategoriesResponse.data || []);
             }
 
             setIsLoading(false);
@@ -413,6 +437,95 @@ const App: React.FC = () => {
         }
     };
     
+    // --- Expense Mutations ---
+    const addExpense = async (data: Omit<Expense, 'id' | 'created_at' | 'user_id'>) => {
+        if (!isEditMode) {
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
+            return;
+        }
+        if (!user) return;
+        const newExpenseData = { ...data, user_id: user.id };
+        const { data: dbData, error } = await supabase.from('expenses').insert(newExpenseData).select().single();
+
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+        } else {
+            setExpenses(prev => [dbData, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            notify(`Expense "${data.expense_name}" added!`, 'success');
+        }
+    };
+
+    const updateExpense = async (updatedExpense: Expense) => {
+        if (!isEditMode) {
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
+            return;
+        }
+        const { error } = await supabase.from('expenses').update(updatedExpense).eq('id', updatedExpense.id);
+
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+        } else {
+            setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+            notify(`Expense "${updatedExpense.expense_name}" updated.`, 'info');
+        }
+    };
+
+    const deleteExpense = async (id: string) => {
+        if (!isEditMode) {
+            notify('Edit mode is locked. Please unlock to make changes.', 'error');
+            return;
+        }
+        const originalExpenses = expenses;
+        const expenseToDelete = originalExpenses.find(e => e.id === id);
+        setExpenses(prev => prev.filter(e => e.id !== id));
+
+        const { error } = await supabase.from('expenses').delete().eq('id', id);
+
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+            setExpenses(originalExpenses);
+        } else {
+            notify(`Expense "${expenseToDelete?.expense_name || 'Unknown'}" deleted.`, 'info');
+        }
+    };
+
+    // --- Expense Category Mutations ---
+    const addExpenseCategory = async (data: Omit<ExpenseCategory, 'id' | 'created_at' | 'user_id'>) => {
+        if (!user) return;
+        const { data: dbData, error } = await supabase.from('expense_categories').insert({ ...data, user_id: user.id }).select().single();
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+        } else {
+            setExpenseCategories(prev => [...prev, dbData].sort((a, b) => a.name.localeCompare(b.name)));
+            notify(`Category "${data.name}" added!`, 'success');
+        }
+    };
+
+    const updateExpenseCategory = async (updatedCategory: ExpenseCategory) => {
+        const { error } = await supabase.from('expense_categories').update({ name: updatedCategory.name }).eq('id', updatedCategory.id);
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+        } else {
+            setExpenseCategories(prev => prev.map(c => c.id === updatedCategory.id ? { ...c, name: updatedCategory.name } : c));
+            notify(`Category "${updatedCategory.name}" updated.`, 'info');
+        }
+    };
+
+    const deleteExpenseCategory = async (id: string) => {
+        const originalCategories = expenseCategories;
+        const categoryToDelete = originalCategories.find(c => c.id === id);
+        setExpenseCategories(prev => prev.filter(c => c.id !== id));
+
+        const { error } = await supabase.from('expense_categories').delete().eq('id', id);
+        
+        if (error) {
+            notify(getErrorMessage(error), 'error');
+            setExpenseCategories(originalCategories);
+        } else {
+            notify(`Category "${categoryToDelete?.name || 'Unknown'}" deleted.`, 'info');
+        }
+    };
+
     // Local-only mutations
     const handleSetReminder = (transactionId: string, remindAt: Date) => {
         const newReminder: Reminder = { id: crypto.randomUUID(), transactionId, remindAt: remindAt.toISOString(), isDismissed: false };
@@ -508,14 +621,15 @@ const App: React.FC = () => {
     // --- Page Rendering ---
     const pageContent = useMemo(() => {
         switch (currentPage) {
-            case 'dashboard': return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
+            case 'dashboard': return <DashboardPage transactions={filteredTransactions} expenses={expenses} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
             case 'transactions': return <TransactionsPage transactions={filteredTransactions} onEdit={openModal} onDelete={(id) => setTransactionToDelete(id)} onSetReminder={(t) => setTransactionForReminder(t)} reminders={reminders} sortConfig={sortConfig} setSortConfig={setSortConfig} timeFilter={timeFilter} setTimeFilter={setTimeFilter} searchQuery={searchQuery} setSearchQuery={setSearchQuery} statusFilter={statusFilter} setStatusFilter={setStatusFilter} isEditMode={isEditMode} />;
-            case 'reports': return <ReportsPage transactions={transactions} isEditMode={isEditMode} />;
+            case 'reports': return <ReportsPage transactions={transactions} expenses={expenses} isEditMode={isEditMode} />;
+            case 'expenses': return <ExpensesPage expenses={expenses} onAddExpense={addExpense} onUpdateExpense={updateExpense} onDeleteExpense={deleteExpense} isEditMode={isEditMode} expenseCategories={expenseCategories} />;
             case 'calculator': return <CalculatorPage calculations={calculations} onAddCalculation={addCalculation} onUpdateCalculation={updateCalculation} onDeleteCalculation={deleteCalculation} isEditMode={isEditMode} />;
-            case 'settings': return <SettingsPage currentSettings={settings} onSave={handleSaveSettings} isEditMode={isEditMode} services={services} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />;
-            default: return <DashboardPage transactions={filteredTransactions} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
+            case 'settings': return <SettingsPage currentSettings={settings} onSave={handleSaveSettings} isEditMode={isEditMode} services={services} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} expenseCategories={expenseCategories} onAddExpenseCategory={addExpenseCategory} onUpdateExpenseCategory={updateExpenseCategory} onDeleteExpenseCategory={deleteExpenseCategory} />;
+            default: return <DashboardPage transactions={filteredTransactions} expenses={expenses} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />;
         }
-    }, [currentPage, filteredTransactions, timeFilter, searchQuery, statusFilter, sortConfig, transactions, calculations, reminders, settings, addCalculation, updateCalculation, deleteCalculation, handleSaveSettings, isEditMode, services, addService, updateService, deleteService]);
+    }, [currentPage, filteredTransactions, timeFilter, searchQuery, statusFilter, sortConfig, transactions, calculations, reminders, settings, addCalculation, updateCalculation, deleteCalculation, handleSaveSettings, isEditMode, services, addService, updateService, deleteService, expenses, addExpense, updateExpense, deleteExpense, expenseCategories, addExpenseCategory, updateExpenseCategory, deleteExpenseCategory]);
     
     if (isLoading) {
         return (

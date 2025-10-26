@@ -59,3 +59,21 @@ export interface Service {
     category?: string;
     created_at: string;
 }
+
+export interface ExpenseCategory {
+    id: string;
+    user_id: string;
+    name: string;
+    created_at: string;
+}
+
+export interface Expense {
+    id: string;
+    user_id: string;
+    created_at: string;
+    expense_name: string;
+    amount: number;
+    date: string;
+    category: string;
+    notes?: string;
+}

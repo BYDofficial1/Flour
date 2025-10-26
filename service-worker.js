@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v17'; // Bumped version for new auth flow
+const CACHE_NAME = 'atta-chakki-hisab-v20'; // Bumped version for dashboard/report enhancements
 const CACHE_FILES = [
     // Core
     '/',
@@ -28,6 +28,7 @@ const CACHE_FILES = [
     // Pages
     '/pages/CalculatorPage.tsx',
     '/pages/DashboardPage.tsx',
+    '/pages/ExpensesPage.tsx',
     '/pages/ManagementPage.tsx',
     '/pages/ReportsPage.tsx',
     '/pages/SettingsPage.tsx',
@@ -40,6 +41,10 @@ const CACHE_FILES = [
     '/components/ConflictResolutionModal.tsx',
     '/components/DailySales.tsx',
     '/components/Dashboard.tsx',
+    '/components/ExpenseBreakdownChart.tsx',
+    '/components/ExpenseCategoryManagement.tsx',
+    '/components/ExpenseForm.tsx',
+    '/components/ExpenseList.tsx',
     '/components/Header.tsx',
     '/components/Navigation.tsx',
     '/components/ReminderModal.tsx',
@@ -53,6 +58,8 @@ const CACHE_FILES = [
 
     // Icons
     '/components/icons/ArrowRightLeftIcon.tsx',
+    '/components/icons/ArrowTrendingDownIcon.tsx',
+    '/components/icons/ArrowTrendingUpIcon.tsx',
     '/components/icons/ArrowsUpDownIcon.tsx',
     '/components/icons/BellIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',

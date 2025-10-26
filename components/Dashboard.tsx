@@ -1,15 +1,17 @@
-
-
 import React, { useMemo } from 'react';
-import type { Transaction } from '../types';
+import type { Transaction, Expense } from '../types';
 import { ChartIcon } from './icons/ChartIcon';
 import { RupeeIcon } from './icons/RupeeIcon';
 import { WeightIcon } from './icons/WeightIcon';
 import { formatCurrency } from '../utils/currency';
 import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
+import { ReceiptIcon } from './icons/ReceiptIcon';
+import { ArrowTrendingUpIcon } from './icons/ArrowTrendingUpIcon';
+import { ArrowTrendingDownIcon } from './icons/ArrowTrendingDownIcon';
 
 interface DashboardProps {
     transactions: Transaction[];
+    expenses: Expense[];
 }
 
 const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: React.ReactNode; iconBgClass?: string; }> = ({ title, value, icon, iconBgClass }) => (
@@ -24,20 +26,21 @@ const DashboardCard: React.FC<{ title: string; value: React.ReactNode; icon: Rea
     </div>
 );
 
+const ProfitCard: React.FC<{ value: number }> = ({ value }) => {
+    const isProfit = value >= 0;
+    return (
+        <DashboardCard
+            title="Net Profit"
+            value={formatCurrency(value)}
+            icon={isProfit ? <ArrowTrendingUpIcon className="text-primary-400 h-6 w-6" /> : <ArrowTrendingDownIcon className="text-red-400 h-6 w-6" />}
+            iconBgClass={isProfit ? 'bg-primary-500/10' : 'bg-red-500/10'}
+        />
+    );
+};
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
+
+const Dashboard: React.FC<DashboardProps> = ({ transactions, expenses }) => {
     const stats = useMemo(() => {
-        if (transactions.length === 0) {
-            return {
-                totalSales: 0,
-                totalQuantity: 0,
-                totalTransactions: 0,
-                averageDailySales: 0,
-                averageDailyQuantity: 0,
-                totalDue: 0,
-            };
-        }
-
         const totalSales = transactions.reduce((acc, t) => acc + t.total, 0);
         const totalQuantity = transactions.reduce((acc, t) => acc + t.quantity, 0);
         const totalTransactions = transactions.length;
@@ -49,32 +52,35 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions }) => {
             }
             return acc;
         }, 0);
-
-        const uniqueDays = new Set(
-            transactions.map(t => new Date(t.date).toLocaleDateString('en-CA'))
-        ).size;
-
-        const averageDailySales = uniqueDays > 0 ? totalSales / uniqueDays : 0;
-        const averageDailyQuantity = uniqueDays > 0 ? totalQuantity / uniqueDays : 0;
+        
+        const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+        const netProfit = totalSales - totalExpenses;
 
         return { 
             totalSales, 
             totalQuantity, 
             totalTransactions,
-            averageDailySales,
-            averageDailyQuantity,
             totalDue,
+            totalExpenses,
+            netProfit,
         };
-    }, [transactions]);
+    }, [transactions, expenses]);
     
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <DashboardCard 
                 title="Total Sales"
                 value={formatCurrency(stats.totalSales)}
                 icon={<RupeeIcon className="text-green-400 h-6 w-6" />}
                 iconBgClass="bg-green-500/10"
             />
+            <DashboardCard 
+                title="Total Expenses"
+                value={formatCurrency(stats.totalExpenses)}
+                icon={<ReceiptIcon className="text-amber-400 h-6 w-6" />}
+                iconBgClass="bg-amber-500/10"
+            />
+            <ProfitCard value={stats.netProfit} />
             <DashboardCard 
                 title="Total Quantity"
                 value={`${stats.totalQuantity.toLocaleString()} kg`}
