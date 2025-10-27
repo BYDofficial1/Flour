@@ -18,22 +18,21 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
             return { chartData: { labels: [], datasets: [] }, totalExpenses: 0, legendData: [] };
         }
 
+        // FIX: By strongly typing the initial value of the reduce function, 
+        // we ensure `totalsByCategory` has the correct `Record<string, number>` type,
+        // which resolves all downstream type errors.
         const totalsByCategory = expenses.reduce((acc, expense) => {
             const category = expense.category || 'Uncategorized';
-            // FIX: Operator '+' cannot be applied to types 'unknown' and 'unknown'.
-            // Ensure expense.amount is treated as a number during the reduction.
-            // FIX: Error on line 32: Operator '+' cannot be applied to types 'unknown' and 'number'.
             acc[category] = (acc[category] || 0) + Number(expense.amount);
             return acc;
         }, {} as Record<string, number>);
 
-        // FIX: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
-        // FIX: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
-        // Ensure the reduced value is treated as a number.
-        // FIX: Error on line 34: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
-        // FIX: Error on line 34: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+        // FIX: This operation could fail if `val` is not a number. The fix above ensures `val` is a number,
+        // and the `Number()` cast provides additional runtime safety.
         const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + Number(val), 0);
 
+        // FIX: This sort operation could fail if array values were not numbers.
+        // The fix to `totalsByCategory` typing resolves this, making `b[1]` and `a[1]` numbers.
         const sortedEntries = Object.entries(totalsByCategory).sort((a, b) => b[1] - a[1]);
         
         // Group smaller slices into 'Other' for clarity
@@ -42,11 +41,8 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         if (sortedEntries.length > 5) {
             for (let i = 0; i < sortedEntries.length; i++) {
                 if (i < 5) {
-                    // FIX: Error on line 42: Argument of type '[string, unknown]' is not assignable to parameter of type '[string, number]'.
-                    mainEntries.push(sortedEntries[i] as [string, number]);
+                    mainEntries.push(sortedEntries[i]);
                 } else {
-                    // FIX: Operator '+=' cannot be applied to types 'number' and 'unknown'.
-                    // Ensure the value from sorted entries is treated as a number.
                     otherTotal += Number(sortedEntries[i][1]);
                 }
             }
@@ -54,8 +50,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
                  mainEntries.push(['Other', otherTotal]);
             }
         } else {
-            // FIX: Error on line 53: Argument of type '[string, unknown]' is not assignable to parameter of type '[string, number]'.
-            mainEntries.push(...sortedEntries as [string, number][]);
+            mainEntries.push(...sortedEntries);
         }
 
         const computedStyle = getComputedStyle(document.documentElement);
@@ -82,10 +77,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         const finalLegendData = mainEntries.map(([name, value], i) => ({
             name,
             value,
-            // FIX: Operator '>' cannot be applied to types 'unknown' and 'number'.
-            // FIX: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
-            // Ensure currentTotal is treated as a number for comparison and division.
-            percentage: Number(currentTotal) > 0 ? ((Number(value) / Number(currentTotal)) * 100).toFixed(1) : '0.0',
+            percentage: currentTotal > 0 ? ((Number(value) / currentTotal) * 100).toFixed(1) : '0.0',
             color: colors[i % colors.length]
         }));
         
