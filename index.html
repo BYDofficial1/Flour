@@ -191,7 +191,7 @@
     .loader-wheat-icon {
         width: 6rem; /* 96px */
         height: 6rem; /* 96px */
-        color: #f59e0b; /* amber-500 */
+        color: rgb(var(--color-primary-500));
         margin-bottom: 2rem;
         animation: pulse-glow 2.5s ease-in-out 2 forwards; /* Run twice (5s) and stop */
     }
@@ -202,7 +202,7 @@
     }
     .typing-text {
         font-weight: bold;
-        color: rgb(var(--color-primary-400)); /* amber-400 by default */
+        color: rgb(var(--color-primary-400));
     }
     .typing-cursor {
         display: inline-block;
@@ -217,11 +217,11 @@
     @keyframes pulse-glow {
         0%, 100% {
             transform: scale(1);
-            filter: drop-shadow(0 0 5px #f59e0b);
+            filter: drop-shadow(0 0 5px rgb(var(--color-primary-500) / 0.7));
         }
         50% {
             transform: scale(1.05);
-            filter: drop-shadow(0 0 15px #f59e0b);
+            filter: drop-shadow(0 0 15px rgb(var(--color-primary-500)));
         }
     }
     @keyframes blink {

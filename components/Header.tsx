@@ -13,14 +13,23 @@ interface HeaderProps {
     isSyncing: boolean;
     isEditMode: boolean;
     onToggleEditMode: () => void;
+    isLoading: boolean;
 }
 
-const SyncStatus: React.FC<{ isOnline: boolean; isSyncing: boolean }> = ({ isOnline, isSyncing }) => {
+const SyncStatus: React.FC<{ isOnline: boolean; isSyncing: boolean; isLoading: boolean; }> = ({ isOnline, isSyncing, isLoading }) => {
     if (!isOnline) {
         return (
             <div title="Offline" className="flex items-center gap-2 text-sm font-semibold text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
                 <ExclamationCircleIcon className="h-4 w-4" />
                 <span>Offline</span>
+            </div>
+        );
+    }
+    if (isLoading) {
+        return (
+            <div title="Connecting..." className="flex items-center gap-2 text-sm font-semibold text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">
+                <SyncIcon className="h-4 w-4 animate-spin" />
+                <span>Connecting...</span>
             </div>
         );
     }
@@ -58,7 +67,7 @@ const EditModeToggle: React.FC<{ isEditMode: boolean; onClick: () => void }> = (
 };
 
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, isEditMode, onToggleEditMode }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, isEditMode, onToggleEditMode, isLoading }) => {
     return (
         <header className="bg-slate-900/80 backdrop-blur-lg shadow-sm sticky top-0 z-40 border-b border-slate-700/80">
             <div className="container mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
@@ -80,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, isOnline, isSyncing, isEdi
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
+                    <SyncStatus isOnline={isOnline} isSyncing={isSyncing} isLoading={isLoading} />
                     <EditModeToggle isEditMode={isEditMode} onClick={onToggleEditMode} />
                 </div>
             </div>

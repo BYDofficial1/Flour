@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { ChartPieIcon } from './icons/ChartPieIcon';
-import { useNotifier } from '../context/NotificationContext';
 
 declare const Chart: any;
 
@@ -11,7 +10,6 @@ interface MainChartProps {
 }
 
 type ChartView = 'sales' | 'quantity';
-type Aggregation = 'daily' | 'weekly' | 'monthly';
 
 const hexToRgba = (hex: string, alpha: number): string => {
     let r = 0, g = 0, b = 0;
@@ -29,7 +27,6 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstance = useRef<any>(null);
     const [chartView, setChartView] = React.useState<ChartView>('sales');
-    const [aggregation, setAggregation] = React.useState<Aggregation>('monthly');
 
     const chartData = useMemo(() => {
         const dateFns = (window as any).dateFns;
@@ -37,40 +34,40 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
             return { labels: [], datasets: [] };
         }
 
-        const aggregationMap = new Map<string, number>();
-        transactions.forEach(t => {
-            const date = new Date(t.date);
-            let key = '';
-            if (aggregation === 'daily') {
-                key = dateFns.format(date, 'yyyy-MM-dd');
-            } else if (aggregation === 'weekly') {
-                key = dateFns.format(dateFns.startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-            } else { // monthly
-                key = dateFns.format(dateFns.startOfMonth(date), 'yyyy-MM-01');
-            }
+        // Group transactions by day and sum the values
+        const dailyTotals: Record<string, number> = transactions.reduce((acc, t) => {
+            const day = dateFns.format(new Date(t.date), 'yyyy-MM-dd');
             const value = chartView === 'sales' ? t.total : t.quantity;
-            aggregationMap.set(key, (aggregationMap.get(key) || 0) + value);
-        });
+            if (typeof value === 'number' && !isNaN(value)) {
+                acc[day] = (acc[day] || 0) + value;
+            }
+            return acc;
+        }, {} as Record<string, number>);
 
-        const sortedData = Array.from(aggregationMap.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+        const sortedDays = Object.keys(dailyTotals).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+        const dataPoints = sortedDays.map(day => ({
+            x: dateFns.parse(day, 'yyyy-MM-dd', new Date()),
+            y: dailyTotals[day]
+        }));
         
         const computedStyle = getComputedStyle(document.documentElement);
         const primaryColor500 = computedStyle.getPropertyValue('--color-primary-500').trim();
 
         return {
-            labels: sortedData.map(d => d[0]),
             datasets: [{
-                label: `${aggregation === 'daily' ? 'Daily' : aggregation === 'weekly' ? 'Weekly' : 'Monthly'} ${chartView === 'sales' ? 'Sales' : 'Quantity'}`,
-                data: sortedData.map(d => d[1]),
-                backgroundColor: hexToRgba(primaryColor500, 0.5),
+                label: `Daily ${chartView === 'sales' ? 'Sales' : 'Quantity'}`,
+                data: dataPoints,
+                backgroundColor: hexToRgba(primaryColor500, 0.6),
                 borderColor: `rgb(${primaryColor500})`,
-                borderWidth: 1.5,
+                borderWidth: 1,
                 borderRadius: 4,
-                hoverBackgroundColor: hexToRgba(primaryColor500, 0.8),
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
             }]
         };
 
-    }, [transactions, chartView, aggregation]);
+    }, [transactions, chartView]);
 
     useEffect(() => {
         if (!chartRef.current) return;
@@ -107,7 +104,7 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
                     x: {
                          type: 'time',
                          time: {
-                            unit: aggregation === 'daily' ? 'day' : aggregation === 'weekly' ? 'week' : 'month',
+                            unit: 'day',
                             tooltipFormat: 'dd MMM yyyy',
                          },
                          grid: { display: false },
@@ -128,9 +125,9 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
                             label: (context: any) => {
                                 const value = context.parsed.y;
                                 if (chartView === 'sales') {
-                                    return `Sales: ${formatCurrency(value)}`;
+                                    return `Total Sales: ${formatCurrency(value)}`;
                                 }
-                                return `Quantity: ${value.toFixed(2)} kg`;
+                                return `Total Quantity: ${value.toFixed(2)} kg`;
                             }
                         }
                     }
@@ -160,11 +157,6 @@ const MainChart: React.FC<MainChartProps> = ({ transactions }) => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                  <h3 className="text-lg font-bold text-slate-100">Performance Overview</h3>
                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center space-x-1 p-1 bg-slate-700 rounded-lg">
-                        <ToggleButton isActive={aggregation === 'daily'} onClick={() => setAggregation('daily')}>Daily</ToggleButton>
-                        <ToggleButton isActive={aggregation === 'weekly'} onClick={() => setAggregation('weekly')}>Weekly</ToggleButton>
-                        <ToggleButton isActive={aggregation === 'monthly'} onClick={() => setAggregation('monthly')}>Monthly</ToggleButton>
-                    </div>
                     <div className="flex items-center space-x-1 p-1 bg-slate-700 rounded-lg">
                         <ToggleButton isActive={chartView === 'sales'} onClick={() => setChartView('sales')}>Sales (Rs)</ToggleButton>
                         <ToggleButton isActive={chartView === 'quantity'} onClick={() => setChartView('quantity')}>Quantity (kg)</ToggleButton>

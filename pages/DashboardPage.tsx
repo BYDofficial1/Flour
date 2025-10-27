@@ -2,8 +2,9 @@ import React, { useMemo } from 'react';
 import type { Transaction, Expense } from '../types';
 import type { TimeFilter } from '../App';
 import Dashboard from '../components/Dashboard';
-import MainChart from '../components/SalesChart';
 import TimeFilterControls from '../components/TimeFilterControls';
+import ItemTrendsChart from '../components/DailySales';
+import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
 
 interface DashboardPageProps {
     transactions: Transaction[];
@@ -50,8 +51,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ transactions, expenses, t
 
             <Dashboard transactions={transactions} expenses={filteredExpenses} />
             
-            <div className="grid grid-cols-1 gap-6">
-                <MainChart transactions={transactions} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ItemTrendsChart transactions={transactions} />
+                <ExpenseBreakdownChart expenses={filteredExpenses} />
             </div>
         </div>
     );

@@ -631,17 +631,6 @@ const App: React.FC = () => {
         }
     }, [currentPage, filteredTransactions, timeFilter, searchQuery, statusFilter, sortConfig, transactions, calculations, reminders, settings, addCalculation, updateCalculation, deleteCalculation, handleSaveSettings, isEditMode, services, addService, updateService, deleteService, expenses, addExpense, updateExpense, deleteExpense, expenseCategories, addExpenseCategory, updateExpenseCategory, deleteExpenseCategory]);
     
-    if (isLoading) {
-        return (
-             <div className="flex h-screen w-screen items-center justify-center bg-slate-900">
-                <div className="flex flex-col items-center gap-4">
-                    <SyncIcon className="h-8 w-8 animate-spin text-primary-500" />
-                    <p className="text-slate-400">Connecting...</p>
-                </div>
-            </div>
-        );
-    }
-    
     if (loadError) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-slate-900 p-4">
@@ -677,6 +666,7 @@ const App: React.FC = () => {
                     isSyncing={isSyncing}
                     isEditMode={isEditMode}
                     onToggleEditMode={handleToggleEditMode}
+                    isLoading={isLoading}
                 />
                 
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900 no-scrollbar">
