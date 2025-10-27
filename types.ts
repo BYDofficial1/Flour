@@ -37,13 +37,6 @@ export interface Calculation {
     user_id?: string;
 }
 
-export interface Reminder {
-    id: string;
-    transactionId: string;
-    remindAt: string;
-    isDismissed?: boolean;
-}
-
 export type Theme = 'amber' | 'blue' | 'green' | 'slate' | 'red' | 'rose' | 'violet' | 'indigo' | 'teal' | 'cyan';
 
 export interface Settings {
@@ -76,16 +69,4 @@ export interface Expense {
     date: string;
     category: string;
     notes?: string;
-}
-
-export interface Receivable {
-    id: string;
-    user_id: string;
-    person_name: string;
-    amount: number;
-    due_date?: string;
-    notes?: string;
-    status: 'pending' | 'received';
-    created_at: string;
-    updated_at?: string;
 }

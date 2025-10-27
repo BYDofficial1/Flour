@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Transaction, Reminder } from '../types';
+import type { Transaction } from '../types';
 import type { TimeFilter, SortKey } from '../App';
 import TransactionList from '../components/TransactionList';
 import { SearchIcon } from '../components/icons/SearchIcon';
@@ -9,15 +9,17 @@ import TimeFilterControls from '../components/TimeFilterControls';
 import SortControls from '../components/SortControls';
 import { useNotifier } from '../context/NotificationContext';
 
+type AllStatus = Transaction['payment_status'] | 'settled';
+
 interface StatusFilterControlsProps {
-    statusFilter: Transaction['payment_status'][];
-    setStatusFilter: (statuses: Transaction['payment_status'][]) => void;
+    statusFilter: AllStatus[];
+    setStatusFilter: (statuses: AllStatus[]) => void;
 }
 
 const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilter, setStatusFilter }) => {
-    const statuses: Transaction['payment_status'][] = ['paid', 'unpaid', 'partial'];
+    const statuses: AllStatus[] = ['paid', 'unpaid', 'partial', 'settled'];
 
-    const handleToggle = (status: Transaction['payment_status']) => {
+    const handleToggle = (status: AllStatus) => {
         const newFilter = statusFilter.includes(status)
             ? statusFilter.filter(s => s !== status)
             : [...statusFilter, status];
@@ -31,16 +33,17 @@ const StatusFilterControls: React.FC<StatusFilterControlsProps> = ({ statusFilte
         }
     };
 
-    const statusStyles: Record<Transaction['payment_status'], { active: string, inactive: string }> = {
+    const statusStyles: Record<AllStatus, { active: string, inactive: string }> = {
         paid: { active: 'bg-green-500 text-white shadow-md', inactive: 'bg-slate-700 text-green-300 hover:bg-slate-600' },
         unpaid: { active: 'bg-red-500 text-white shadow-md', inactive: 'bg-slate-700 text-red-300 hover:bg-slate-600' },
         partial: { active: 'bg-yellow-500 text-white shadow-md', inactive: 'bg-slate-700 text-yellow-300 hover:bg-slate-600' },
+        settled: { active: 'bg-blue-500 text-white shadow-md', inactive: 'bg-slate-700 text-blue-300 hover:bg-slate-600' },
     };
 
     return (
         <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-slate-300 mr-1 flex-shrink-0">Status:</label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 {statuses.map(status => (
                     <button
                         key={status}
@@ -64,10 +67,8 @@ interface TransactionsPageProps {
     setTimeFilter: (filter: TimeFilter) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
-    statusFilter: Transaction['payment_status'][];
-    setStatusFilter: (statuses: Transaction['payment_status'][]) => void;
-    onSetReminder: (transaction: Transaction) => void;
-    reminders: Reminder[];
+    statusFilter: AllStatus[];
+    setStatusFilter: (statuses: AllStatus[]) => void;
     sortConfig: { key: SortKey; direction: 'ascending' | 'descending' };
     setSortConfig: (config: { key: SortKey; direction: 'ascending' | 'descending' }) => void;
     isEditMode: boolean;
@@ -82,9 +83,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     searchQuery, 
     setSearchQuery, 
     statusFilter, 
-    setStatusFilter, 
-    onSetReminder,
-    reminders,
+    setStatusFilter,
     sortConfig,
     setSortConfig,
     isEditMode
@@ -133,8 +132,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     transactions={transactions}
                     onEdit={onEdit}
                     onDelete={onDelete}
-                    onSetReminder={onSetReminder}
-                    reminders={reminders}
                     isEditMode={isEditMode}
                 />
             </div>

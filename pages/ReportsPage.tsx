@@ -31,12 +31,13 @@ const StatCard: React.FC<{ title: string; value: React.ReactNode; icon: React.Re
 );
 
 
-const StatusBadge: React.FC<{ status: Transaction['payment_status'] }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: Transaction['payment_status'] | 'settled' }> = ({ status }) => {
     const baseClasses = "px-2 py-0.5 text-xs font-semibold rounded-full capitalize";
     const styles = {
         paid: 'bg-green-500/20 text-green-300',
         unpaid: 'bg-red-500/20 text-red-300',
         partial: 'bg-yellow-500/20 text-yellow-300',
+        settled: 'bg-blue-500/20 text-blue-300',
     };
     return <span className={`${baseClasses} ${styles[status]}`}>{status}</span>;
 };
@@ -78,7 +79,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
         const monthlyStats = filteredTransactions.reduce((acc, t) => {
             acc.totalSales += t.total;
             acc.totalQuantity += t.quantity;
-            if (t.payment_status !== 'paid') {
+            if (t.payment_status !== 'paid' && !t.is_settled) {
                 acc.totalDue += t.total - (t.paid_amount || 0);
             }
             return acc;
@@ -137,10 +138,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
                 {/* Left Column: Stats & Expense Chart */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="xl:col-span-2 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-6">
                         <StatCard 
                             title="Total Sales (Revenue)"
                             value={formatCurrency(stats.totalSales)}
@@ -180,7 +181,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
                 </div>
                 
                 {/* Right Column: Transaction List */}
-                <div className="lg:col-span-3 bg-slate-800 p-4 rounded-xl shadow-md border border-slate-700">
+                <div className="xl:col-span-3 bg-slate-800 p-4 rounded-xl shadow-md border border-slate-700">
                      <h3 className="text-lg font-bold text-slate-100 mb-4">
                         Transactions for {new Date(selectedDate + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}
                      </h3>
@@ -193,7 +194,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
                                  <button onClick={() => requestSort('total')} className="flex items-center justify-end hover:text-white">Total <SortIcon direction={getSortDirection('total')} /></button>
                                  <span className="text-right">Status</span>
                             </div>
-                            {monthlyTransactions.map(t => (
+                            {monthlyTransactions.map(t => {
+                                const effectiveStatus = t.is_settled ? 'settled' : t.payment_status;
+                                return (
                                 <div key={t.id} className="bg-slate-800/50 hover:bg-slate-700/50 transition-colors duration-200 p-4 rounded-lg grid grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-2 items-center text-sm">
                                     <div className="lg:col-span-1">
                                         <p className="font-semibold text-slate-100">{new Date(t.date).toLocaleDateString('en-CA')}</p>
@@ -206,10 +209,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
                                         <p className="font-bold text-primary-400">{formatCurrency(t.total)}</p>
                                    </div>
                                     <div className="lg:col-span-1 flex justify-end">
-                                        <StatusBadge status={t.payment_status} />
+                                        <StatusBadge status={effectiveStatus} />
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                      ) : (
                         <div className="text-center py-16 px-6">

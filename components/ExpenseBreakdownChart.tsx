@@ -18,21 +18,17 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
             return { chartData: { labels: [], datasets: [] }, totalExpenses: 0, legendData: [] };
         }
 
-        // FIX: By strongly typing the initial value of the reduce function, 
-        // we ensure `totalsByCategory` has the correct `Record<string, number>` type,
-        // which resolves all downstream type errors.
+        // FIX: Correctly type the accumulator for the reduce function to ensure `totalsByCategory` is Record<string, number>.
         const totalsByCategory = expenses.reduce((acc, expense) => {
             const category = expense.category || 'Uncategorized';
-            acc[category] = (acc[category] || 0) + Number(expense.amount);
+            acc[category] = (acc[category] || 0) + expense.amount;
             return acc;
         }, {} as Record<string, number>);
 
-        // FIX: This operation could fail if `val` is not a number. The fix above ensures `val` is a number,
-        // and the `Number()` cast provides additional runtime safety.
-        const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + Number(val), 0);
+        // FIX: With `totalsByCategory` correctly typed, `Object.values` returns `number[]`, so `val` is a number.
+        // The explicit `Number()` cast is no longer needed.
+        const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + val, 0);
 
-        // FIX: This sort operation could fail if array values were not numbers.
-        // The fix to `totalsByCategory` typing resolves this, making `b[1]` and `a[1]` numbers.
         const sortedEntries = Object.entries(totalsByCategory).sort((a, b) => b[1] - a[1]);
         
         // Group smaller slices into 'Other' for clarity
@@ -41,15 +37,18 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         if (sortedEntries.length > 5) {
             for (let i = 0; i < sortedEntries.length; i++) {
                 if (i < 5) {
+                    // FIX: No cast needed as `sortedEntries[i]` is correctly inferred as `[string, number]`.
                     mainEntries.push(sortedEntries[i]);
                 } else {
-                    otherTotal += Number(sortedEntries[i][1]);
+                    // FIX: No cast needed as `sortedEntries[i][1]` is correctly inferred as a number.
+                    otherTotal += sortedEntries[i][1];
                 }
             }
             if (otherTotal > 0) {
                  mainEntries.push(['Other', otherTotal]);
             }
         } else {
+            // FIX: No cast needed as `sortedEntries` is correctly inferred as `[string, number][]`.
             mainEntries.push(...sortedEntries);
         }
 
@@ -77,7 +76,8 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         const finalLegendData = mainEntries.map(([name, value], i) => ({
             name,
             value,
-            percentage: currentTotal > 0 ? ((Number(value) / currentTotal) * 100).toFixed(1) : '0.0',
+            // FIX: No casts needed as `currentTotal` and `value` are correctly typed as numbers.
+            percentage: currentTotal > 0 ? ((value / currentTotal) * 100).toFixed(1) : '0.0',
             color: colors[i % colors.length]
         }));
         
@@ -143,11 +143,11 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
     const hasData = expenses.length > 0;
 
     return (
-        <div className="bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-2xl shadow-black/20 h-full border border-slate-700 flex flex-col">
+        <div className="bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-2xl shadow-black/20 border border-slate-700 flex flex-col">
             <h3 className="text-lg font-bold text-slate-100 mb-4 flex-shrink-0">Expense Breakdown</h3>
             {hasData ? (
-                 <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                    <div className="relative h-48 md:h-full w-full max-w-[250px] mx-auto">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="relative h-56 w-full max-w-[250px] mx-auto">
                         <canvas ref={chartRef}></canvas>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                             <span className="text-slate-400 text-sm">Total Spent</span>
@@ -170,7 +170,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
                     </div>
                 </div>
             ) : (
-                <div className="flex-grow flex flex-col justify-center items-center text-center p-4 min-h-[250px]">
+                <div className="flex flex-col justify-center items-center text-center p-4 min-h-[250px]">
                     <ChartPieIcon />
                     <h4 className="text-md font-semibold text-slate-200 mt-3">No Expense Data</h4>
                     <p className="text-slate-400 mt-1 text-sm">Add expenses to see a category breakdown here.</p>

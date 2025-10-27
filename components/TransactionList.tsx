@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Transaction, Reminder } from '../types';
+import type { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { DocumentPlusIcon } from './icons/DocumentPlusIcon';
 import { DotsVerticalIcon } from './icons/DotsVerticalIcon';
 import { EditIcon } from './icons/EditIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
-import { BellIcon } from './icons/BellIcon';
 import { PhoneIcon } from './icons/PhoneIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
@@ -14,33 +13,8 @@ interface TransactionListProps {
     transactions: Transaction[];
     onEdit: (transaction: Transaction) => void;
     onDelete: (id: string) => void;
-    onSetReminder: (transaction: Transaction) => void;
-    reminders: Reminder[];
     isEditMode: boolean;
 }
-
-type ReminderStatus = 'due' | 'soon' | 'upcoming';
-
-const getReminderStatus = (reminderDate: Date): { status: ReminderStatus, text: string } => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const reminderDay = new Date(reminderDate.getFullYear(), reminderDate.getMonth(), reminderDate.getDate());
-    const diffTime = reminderDay.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    const timeText = reminderDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-    if (reminderDate < now) {
-        return { status: 'due', text: `Due ${reminderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` };
-    }
-    if (diffDays === 0) {
-        return { status: 'soon', text: `Today at ${timeText}` };
-    }
-    if (diffDays === 1) {
-        return { status: 'upcoming', text: `Tomorrow at ${timeText}` };
-    }
-    return { status: 'upcoming', text: `${reminderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${timeText}` };
-};
 
 const StatusBadge: React.FC<{ status: Transaction['payment_status'] | 'settled' }> = ({ status }) => {
     const baseClasses = "px-2.5 py-1 text-xs font-bold rounded-full capitalize";
@@ -73,9 +47,7 @@ const ActionsMenu: React.FC<{
     transaction: Transaction;
     onEdit: () => void;
     onDelete: () => void;
-    onSetReminder: () => void;
-    hasReminder: boolean;
-}> = ({ transaction, onEdit, onDelete, onSetReminder, hasReminder }) => {
+}> = ({ transaction, onEdit, onDelete }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +82,6 @@ const ActionsMenu: React.FC<{
                 <div className="absolute top-full right-0 mt-1 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-10 animate-[fadeIn_0.1s_ease-out]">
                     <ul className="p-1">
                         <MenuItem icon={<EditIcon />} label="Edit" onClick={() => handleAction(onEdit)} />
-                        <MenuItem icon={<BellIcon isActive={hasReminder}/>} label={hasReminder ? "Change Reminder" : "Set Reminder"} onClick={() => handleAction(onSetReminder)} />
                         <MenuItem icon={<DeleteIcon />} label="Delete" onClick={() => handleAction(onDelete)} isDestructive={true} />
                     </ul>
                 </div>
@@ -131,10 +102,8 @@ const TransactionCard: React.FC<{
     t: Transaction;
     onEdit: () => void;
     onDelete: () => void;
-    onSetReminder: () => void;
-    reminder: Reminder | undefined;
     isEditMode: boolean;
-}> = ({ t, onEdit, onDelete, onSetReminder, reminder, isEditMode }) => {
+}> = ({ t, onEdit, onDelete, isEditMode }) => {
     
     const balanceDue = t.total - (t.paid_amount || 0);
     const isGrindingService = t.item.toLowerCase().includes('grinding');
@@ -151,8 +120,6 @@ const TransactionCard: React.FC<{
     
     const cardStatus = t.is_settled ? 'settled' : t.payment_status;
     const baseClasses = `bg-slate-800 rounded-xl shadow-lg hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden border-l-4`;
-
-    const reminderInfo = reminder ? getReminderStatus(new Date(reminder.remindAt)) : null;
 
     const CostDisplay: React.FC<{ cash?: number, paidWithFlour?: boolean, flour?: number }> = ({ cash, paidWithFlour, flour }) => {
         const cashPart = cash ? formatCurrency(cash) : null;
@@ -186,8 +153,6 @@ const TransactionCard: React.FC<{
                             transaction={t}
                             onEdit={onEdit}
                             onDelete={onDelete}
-                            onSetReminder={onSetReminder}
-                            hasReminder={!!reminder}
                         />
                     )}
                 </div>
@@ -225,14 +190,6 @@ const TransactionCard: React.FC<{
                     </div>
                 </div>
             )}
-             {reminderInfo && (
-                <div className="px-4 pb-4">
-                    <div className={`flex items-center gap-2 p-2 rounded-lg text-sm bg-slate-700`}>
-                       <BellIcon isActive={true} status={reminderInfo.status} />
-                       <span className="font-semibold text-slate-300">Reminder: {reminderInfo.text}</span>
-                    </div>
-                </div>
-            )}
 
             {/* Section 3: Payment Status & Totals */}
             <div className="p-4 bg-slate-900/40 border-t border-slate-700/50 flex justify-between items-center">
@@ -260,8 +217,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
     transactions,
     onEdit,
     onDelete,
-    onSetReminder,
-    reminders,
     isEditMode,
 }) => {
     
@@ -283,8 +238,6 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     t={t}
                     onEdit={() => onEdit(t)}
                     onDelete={() => onDelete(t.id)}
-                    onSetReminder={() => onSetReminder(t)}
-                    reminder={reminders.find(r => r.transactionId === t.id)}
                     isEditMode={isEditMode}
                 />
             ))}

@@ -89,7 +89,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
     const { addNotification } = useNotifier();
     const [settings, setSettings] = useState<Settings>(currentSettings);
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
     const [isServiceManagementOpen, setIsServiceManagementOpen] = useState(false);
     const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
     const [isPushSubscribed, setIsPushSubscribed] = useState(false);
@@ -114,34 +113,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         };
         checkSubscription();
     }, []);
-
-    const handleNotificationRequest = useCallback(() => {
-        if (!('Notification' in window)) {
-            addNotification('This browser does not support desktop notifications.', 'error');
-            return;
-        }
-
-        if (notificationPermission === 'granted') {
-             addNotification('Notifications are already enabled!', 'info');
-             return;
-        }
-
-        if (notificationPermission === 'denied') {
-            addNotification('Notifications are blocked. Please enable them in your browser settings.', 'error');
-            return;
-        }
-
-        Notification.requestPermission().then(permission => {
-            setNotificationPermission(permission);
-            if (permission === 'granted') {
-                addNotification('Notifications enabled successfully!', 'success');
-                new Notification('Welcome!', { body: 'You will now receive reminders here.' });
-            } else {
-                addNotification('Notification permissions were not granted.', 'info');
-            }
-        });
-    }, [notificationPermission, addNotification]);
-
 
     const handleSettingChange = (key: keyof Settings, value: any) => {
         setSettings(prev => ({ ...prev, [key]: value }));
@@ -177,19 +148,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
-    const getPermissionButton = () => {
-        switch (notificationPermission) {
-            case 'granted':
-                return { text: 'Permissions Granted', disabled: true, className: 'bg-green-600/50 text-white cursor-not-allowed' };
-            case 'denied':
-                return { text: 'Permissions Blocked', disabled: true, className: 'bg-red-600/50 text-white cursor-not-allowed' };
-            default:
-                return { text: 'Enable Notifications', disabled: false, className: 'bg-primary-500 text-white hover:bg-primary-600' };
-        }
-    };
-    
-    const permissionButton = getPermissionButton();
-
     return (
         <>
             <div className="mt-4 max-w-3xl mx-auto pb-10 px-2">
@@ -210,19 +168,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                             />
                         </SettingItem>
                          <div className="border-t border-slate-700/50" />
-                        <SettingItem
-                            label="In-App Reminders"
-                            description="Get reminders for due transactions when the app is open."
-                        >
-                             <button
-                                onClick={handleNotificationRequest}
-                                disabled={permissionButton.disabled}
-                                className={`px-4 py-2 text-sm font-semibold rounded-lg shadow-md transition-colors ${permissionButton.className}`}
-                            >
-                                {permissionButton.text}
-                            </button>
-                        </SettingItem>
-                        <div className="border-t border-slate-700/50" />
                         <SettingItem
                             label="Background Push Notifications"
                             description="Receive alerts for new transactions even when the app is closed. Requires a backend setup to send notifications."

@@ -8,9 +8,8 @@ import { DocumentTextIcon } from './icons/DocumentTextIcon';
 import { useNotifier } from '../context/NotificationContext';
 import { CogIcon } from './icons/CogIcon';
 import { ReceiptIcon } from './icons/ReceiptIcon';
-import { HandRaisedIcon } from './icons/HandRaisedIcon';
 
-type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings' | 'expenses' | 'receivables';
+type Page = 'transactions' | 'dashboard' | 'reports' | 'calculator' | 'settings' | 'expenses';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -82,7 +81,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
                         <ul className="space-y-2">
                              <NavItem label="Dashboard" icon={<ChartIcon className="h-5 w-5" />} isActive={currentPage === 'dashboard'} onClick={() => handleNavigation('dashboard')} />
                              <NavItem label="Transactions" icon={<ListBulletIcon />} isActive={currentPage === 'transactions'} onClick={() => handleNavigation('transactions')} />
-                             <NavItem label="Collections" icon={<HandRaisedIcon />} isActive={currentPage === 'receivables'} onClick={() => handleNavigation('receivables')} />
                              <NavItem label="Expenses" icon={<ReceiptIcon className="h-5 w-5" />} isActive={currentPage === 'expenses'} onClick={() => handleNavigation('expenses')} />
                              <NavItem label="Reports" icon={<DocumentTextIcon />} isActive={currentPage === 'reports'} onClick={() => handleNavigation('reports')} />
                              <NavItem label="Calculator" icon={<CalculatorIcon />} isActive={currentPage === 'calculator'} onClick={() => handleNavigation('calculator')} />
