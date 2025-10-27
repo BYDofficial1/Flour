@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v20'; // Bumped version for dashboard/report enhancements
+const CACHE_NAME = 'atta-chakki-hisab-v21'; // Bumped version for receivables feature
 const CACHE_FILES = [
     // Core
     '/',
@@ -33,6 +33,7 @@ const CACHE_FILES = [
     '/pages/ReportsPage.tsx',
     '/pages/SettingsPage.tsx',
     '/pages/TransactionsPage.tsx',
+    '/pages/ReceivablesPage.tsx',
 
     // Components
     '/components/Avatar.tsx',
@@ -47,6 +48,9 @@ const CACHE_FILES = [
     '/components/ExpenseList.tsx',
     '/components/Header.tsx',
     '/components/Navigation.tsx',
+    '/components/ReceivableForm.tsx',
+    '/components/ReceivableList.tsx',
+    '/components/ReminderModal.tsx',
     '/components/SalesChart.tsx',
     '/components/Sidebar.tsx',
     '/components/SortControls.tsx',
@@ -60,6 +64,7 @@ const CACHE_FILES = [
     '/components/icons/ArrowTrendingDownIcon.tsx',
     '/components/icons/ArrowTrendingUpIcon.tsx',
     '/components/icons/ArrowsUpDownIcon.tsx',
+    '/components/icons/BellIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',
     '/components/icons/CalendarIcon.tsx',
     '/components/icons/CameraIcon.tsx',
@@ -79,6 +84,7 @@ const CACHE_FILES = [
     '/components/icons/ExportIcon.tsx',
     '/components/icons/EyeIcon.tsx',
     '/components/icons/FingerprintIcon.tsx',
+    '/components/icons/HandRaisedIcon.tsx',
     '/components/icons/InformationCircleIcon.tsx',
     '/components/icons/KeypadIcon.tsx',
     '/components/icons/ListBulletIcon.tsx',
