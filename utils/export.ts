@@ -1,5 +1,60 @@
-import type { Transaction } from '../types';
+import type { Transaction, Expense, Receivable, Calculation, Service, ExpenseCategory, Settings } from '../types';
 import { formatCurrency } from './currency';
+
+type BackupData = {
+    transactions: Transaction[];
+    expenses: Expense[];
+    receivables: Receivable[];
+    calculations: Calculation[];
+    services: Service[];
+    expenseCategories: ExpenseCategory[];
+    settings: Settings;
+};
+
+type BackupFile = {
+    version: number;
+    exportedAt: string;
+    data: BackupData;
+};
+
+export const exportDataToJson = (data: BackupData) => {
+    const backupFile: BackupFile = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        data: data
+    };
+
+    const jsonString = JSON.stringify(backupFile, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    const dateString = new Date().toISOString().split('T')[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `chakki_hisab_backup_${dateString}.json`);
+    
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+
+export const validateBackupFile = (parsedJson: any): parsedJson is BackupFile => {
+    if (typeof parsedJson !== 'object' || parsedJson === null) return false;
+    
+    const hasCoreKeys = 'version' in parsedJson && 'exportedAt' in parsedJson && 'data' in parsedJson;
+    if (!hasCoreKeys) return false;
+
+    const data = parsedJson.data;
+    const hasDataKeys = 'transactions' in data && 'expenses' in data && 'receivables' in data && 'calculations' in data && 'services' in data && 'expenseCategories' in data && 'settings' in data;
+    if (!hasDataKeys) return false;
+
+    // Basic type checking
+    return Array.isArray(data.transactions) && Array.isArray(data.expenses) && typeof data.settings === 'object';
+};
+
 
 export const exportTransactionsToTxt = (transactions: Transaction[]) => {
     if (transactions.length === 0) {

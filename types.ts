@@ -22,6 +22,8 @@ export interface Transaction {
     paid_grinding_with_flour?: boolean;
     grinding_cost_flour_kg?: number;
     cleaning_cost_flour_kg?: number;
+    cleaning_reduction_kg?: number;
+    grinding_reduction_kg?: number;
 }
 
 export interface Calculation {

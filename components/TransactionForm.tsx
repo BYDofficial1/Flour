@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Transaction, Service } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { formatCurrency } from '../utils/currency';
@@ -9,6 +9,7 @@ interface TransactionFormProps {
     onSubmit: (data: any) => void;
     initialData: Transaction | null;
     services: Service[];
+    transactions: Transaction[]; // For customer autocomplete
     prefilledData?: Partial<Transaction> | null;
 }
 
@@ -34,7 +35,7 @@ const CheckboxInput: React.FC<{ id: string, label: string, checked: boolean, onC
     </div>
 );
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSubmit, initialData, services, prefilledData }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSubmit, initialData, services, transactions, prefilledData }) => {
     const [customerName, setCustomerName] = useState('');
     const [customerMobile, setCustomerMobile] = useState('');
     const [item, setItem] = useState('');
@@ -56,6 +57,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
     const [paidGrindingWithFlour, setPaidGrindingWithFlour] = useState(false);
     const [grindingCostFlourKg, setGrindingCostFlourKg] = useState('');
     const [cleaningCostFlourKg, setCleaningCostFlourKg] = useState('');
+    const [cleaningReductionKg, setCleaningReductionKg] = useState('');
+    const [grindingReductionKg, setGrindingReductionKg] = useState('');
+
+    // Autocomplete state
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const customerInputRef = useRef<HTMLInputElement>(null);
+
+    const uniqueCustomerNames = useMemo(() => {
+        return [...new Set(transactions.map(t => t.customer_name.trim()).filter(Boolean))];
+    }, [transactions]);
 
 
     const isEditing = !!initialData;
@@ -77,8 +89,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
         const takenByCustomer = parseFloat(flourTakenKg) || 0;
         const usedForGrinding = paidGrindingWithFlour ? (parseFloat(grindingCostFlourKg) || 0) : 0;
         const usedForCleaning = paidCleaningWithFlour ? (parseFloat(cleaningCostFlourKg) || 0) : 0;
-        return totalQuantity - takenByCustomer - usedForGrinding - usedForCleaning;
-    }, [quantity, flourTakenKg, paidGrindingWithFlour, grindingCostFlourKg, paidCleaningWithFlour, cleaningCostFlourKg]);
+        const cleaningReduction = parseFloat(cleaningReductionKg) || 0;
+        const grindingReduction = parseFloat(grindingReductionKg) || 0;
+        return totalQuantity - takenByCustomer - usedForGrinding - usedForCleaning - cleaningReduction - grindingReduction;
+    }, [quantity, flourTakenKg, paidGrindingWithFlour, grindingCostFlourKg, paidCleaningWithFlour, cleaningCostFlourKg, cleaningReductionKg, grindingReductionKg]);
 
     const hasErrors = Object.values(errors).some(Boolean);
     
@@ -110,6 +124,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             setPaidGrindingWithFlour(initialData?.paid_grinding_with_flour || false);
             setGrindingCostFlourKg(initialData?.grinding_cost_flour_kg?.toString() || '');
             setCleaningCostFlourKg(initialData?.cleaning_cost_flour_kg?.toString() || '');
+            setCleaningReductionKg(initialData?.cleaning_reduction_kg?.toString() || '');
+            setGrindingReductionKg(initialData?.grinding_reduction_kg?.toString() || '');
 
             setErrors({});
         }
@@ -133,6 +149,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
         flourTakenKg: setFlourTakenKg,
         grindingCostFlourKg: setGrindingCostFlourKg,
         cleaningCostFlourKg: setCleaningCostFlourKg,
+        cleaningReductionKg: setCleaningReductionKg,
+        grindingReductionKg: setGrindingReductionKg,
     };
     
     const handleNumberChange = (value: string, field: keyof typeof setters) => {
@@ -146,6 +164,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             return newErrors;
         });
     };
+
+    const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setCustomerName(value);
+        if (value) {
+            const filteredSuggestions = uniqueCustomerNames.filter(name =>
+                name.toLowerCase().includes(value.toLowerCase())
+            );
+            setSuggestions(filteredSuggestions);
+            setShowSuggestions(true);
+        } else {
+            setShowSuggestions(false);
+        }
+    };
+
+    const handleSuggestionClick = (name: string) => {
+        setCustomerName(name);
+        setShowSuggestions(false);
+    };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -175,6 +213,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
             paid_grinding_with_flour: paidGrindingWithFlour,
             grinding_cost_flour_kg: parseFloat(grindingCostFlourKg) || 0,
             cleaning_cost_flour_kg: parseFloat(cleaningCostFlourKg) || 0,
+            cleaning_reduction_kg: parseFloat(cleaningReductionKg) || 0,
+            grinding_reduction_kg: parseFloat(grindingReductionKg) || 0,
         };
         
         if(isEditing && initialData) {
@@ -218,9 +258,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                     <div className="grid lg:grid-cols-2 lg:gap-x-8">
                         <div className="space-y-6">
                             <FormSection title="Customer Details">
-                                <div>
+                                <div className="relative">
                                     <label htmlFor="customerName" className="block text-sm font-medium text-slate-300">Customer Name</label>
-                                    <input type="text" id="customerName" value={customerName} onChange={e => setCustomerName(e.target.value)} required className={formInputClasses} />
+                                    <input 
+                                       type="text" 
+                                       id="customerName" 
+                                       value={customerName} 
+                                       onChange={handleCustomerNameChange}
+                                       onFocus={() => customerName && setShowSuggestions(true)}
+                                       onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} // Delay to allow click
+                                       autoComplete="off"
+                                       required 
+                                       className={formInputClasses} 
+                                       ref={customerInputRef}
+                                    />
+                                    {showSuggestions && suggestions.length > 0 && (
+                                        <ul className="absolute z-10 w-full bg-slate-700 border border-slate-600 rounded-md shadow-lg max-h-40 overflow-y-auto mt-1">
+                                            {suggestions.map((name, index) => (
+                                                <li 
+                                                    key={index} 
+                                                    onMouseDown={() => handleSuggestionClick(name)}
+                                                    className="px-3 py-2 cursor-pointer text-slate-200 hover:bg-primary-500 hover:text-white"
+                                                >
+                                                    {name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                                 <div>
                                     <label htmlFor="customerMobile" className="block text-sm font-medium text-slate-300">Customer Mobile (Optional)</label>
@@ -266,14 +330,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSu
                                     </div>
                                 </div>
                                 {isGrindingService && (
-                                    <div>
-                                        <label htmlFor="flourTakenKg" className="block text-sm font-medium text-slate-300">Flour Taken by Customer (kg)</label>
-                                        <input type="number" id="flourTakenKg" step="0.01" value={flourTakenKg} onChange={e => handleNumberChange(e.target.value, 'flourTakenKg')} className={formInputClasses} />
-                                        {errors.flourTakenKg && <p className="text-red-500 text-xs mt-1">{errors.flourTakenKg}</p>}
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            Remaining Flour: <span className="font-bold text-amber-400">{flourRemaining.toFixed(2)} kg</span>
-                                        </p>
-                                    </div>
+                                    <>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label htmlFor="cleaningReductionKg" className="block text-sm font-medium text-slate-300">Cleaning Reduction (kg)</label>
+                                                <input type="number" id="cleaningReductionKg" step="0.01" value={cleaningReductionKg} onChange={e => handleNumberChange(e.target.value, 'cleaningReductionKg')} className={formInputClasses} />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="grindingReductionKg" className="block text-sm font-medium text-slate-300">Grinding Reduction (kg)</label>
+                                                <input type="number" id="grindingReductionKg" step="0.01" value={grindingReductionKg} onChange={e => handleNumberChange(e.target.value, 'grindingReductionKg')} className={formInputClasses} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="flourTakenKg" className="block text-sm font-medium text-slate-300">Flour Taken by Customer (kg)</label>
+                                            <input type="number" id="flourTakenKg" step="0.01" value={flourTakenKg} onChange={e => handleNumberChange(e.target.value, 'flourTakenKg')} className={formInputClasses} />
+                                            {errors.flourTakenKg && <p className="text-red-500 text-xs mt-1">{errors.flourTakenKg}</p>}
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                Remaining Flour: <span className="font-bold text-amber-400">{flourRemaining.toFixed(2)} kg</span>
+                                            </p>
+                                        </div>
+                                    </>
                                 )}
                             </FormSection>
                         </div>

@@ -140,7 +140,9 @@ const TransactionCard: React.FC<{
     const isGrindingService = t.item.toLowerCase().includes('grinding');
     
     const flourUsedForCosts = (t.grinding_cost_flour_kg || 0) + (t.cleaning_cost_flour_kg || 0);
-    const flourRemaining = t.quantity - (t.flour_taken_kg || 0) - flourUsedForCosts;
+    const cleaningReduction = t.cleaning_reduction_kg || 0;
+    const grindingReduction = t.grinding_reduction_kg || 0;
+    const flourRemaining = t.quantity - (t.flour_taken_kg || 0) - flourUsedForCosts - cleaningReduction - grindingReduction;
 
     const statusStyles: Record<Transaction['payment_status'] | 'settled', { border: string, bg: string }> = {
         paid: { border: 'border-l-green-500/80', bg: 'bg-gradient-to-r from-green-500/10' },
@@ -209,18 +211,38 @@ const TransactionCard: React.FC<{
 
             {isGrindingService && (
                 <div className="px-4 pb-4">
-                     <div className="bg-slate-700/50 p-3 rounded-lg grid grid-cols-3 gap-2 text-center">
-                        <div>
-                            <p className="text-xs text-slate-400">Total Flour</p>
-                            <p className="font-semibold text-slate-200">{t.quantity.toFixed(2)} kg</p>
+                     <div className="bg-slate-700/50 p-3 rounded-lg space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-300">Initial Wheat</span>
+                            <span className="font-semibold text-slate-100">{t.quantity.toFixed(2)} kg</span>
                         </div>
-                         <div>
-                            <p className="text-xs text-slate-400">Flour Taken</p>
-                            <p className="font-semibold text-slate-200">{(t.flour_taken_kg || 0).toFixed(2)} kg</p>
-                        </div>
-                         <div>
-                            <p className="text-xs text-slate-400">Remaining</p>
-                            <p className={`font-bold ${flourRemaining > 0 ? 'text-amber-400' : 'text-green-400'}`}>{flourRemaining.toFixed(2)} kg</p>
+                        {(t.cleaning_reduction_kg ?? 0) > 0 && (
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">(-) Cleaning Reduction</span>
+                                <span className="font-semibold text-slate-200">{(t.cleaning_reduction_kg || 0).toFixed(2)} kg</span>
+                            </div>
+                        )}
+                        {(t.grinding_reduction_kg ?? 0) > 0 && (
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">(-) Grinding Reduction</span>
+                                <span className="font-semibold text-slate-200">{(t.grinding_reduction_kg || 0).toFixed(2)} kg</span>
+                            </div>
+                        )}
+                        {(t.flour_taken_kg ?? 0) > 0 && (
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">(-) Flour Taken</span>
+                                <span className="font-semibold text-slate-200">{(t.flour_taken_kg || 0).toFixed(2)} kg</span>
+                            </div>
+                        )}
+                        {flourUsedForCosts > 0 && (
+                             <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">(-) Paid with Flour</span>
+                                <span className="font-semibold text-slate-200">{flourUsedForCosts.toFixed(2)} kg</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-base pt-2 border-t border-slate-600/50">
+                            <span className="font-bold text-slate-200">Remaining Flour</span>
+                            <span className={`font-bold ${flourRemaining >= 0 ? 'text-amber-400' : 'text-red-400'}`}>{flourRemaining.toFixed(2)} kg</span>
                         </div>
                     </div>
                 </div>

@@ -1,10 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { Settings, Theme, Service, ExpenseCategory } from '../types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type { Settings, Theme, Service, ExpenseCategory, Transaction, Expense, Receivable, Calculation } from '../types';
 import { useNotifier } from '../context/NotificationContext';
 import ManagementPage from './ManagementPage';
 import { subscribeUser, unsubscribeUser } from '../utils/push';
 import { getErrorMessage } from '../utils/error';
 import ExpenseCategoryManagement from '../components/ExpenseCategoryManagement';
+import { exportDataToJson, validateBackupFile } from '../utils/export';
+import ConfirmationModal from '../components/ConfirmationModal';
+
+type AllData = {
+    transactions: Transaction[];
+    expenses: Expense[];
+    receivables: Receivable[];
+    calculations: Calculation[];
+    services: Service[];
+    expenseCategories: ExpenseCategory[];
+    settings: Settings;
+};
 
 interface SettingsPageProps {
     currentSettings: Settings;
@@ -18,6 +30,8 @@ interface SettingsPageProps {
     onAddExpenseCategory: (category: Omit<ExpenseCategory, 'id' | 'created_at' | 'user_id'>) => void;
     onUpdateExpenseCategory: (category: ExpenseCategory) => void;
     onDeleteExpenseCategory: (id: string) => void;
+    allData: AllData;
+    onRestoreData: (backupData: any) => Promise<void>;
 }
 
 const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; }> = ({ enabled, onChange }) => (
@@ -85,7 +99,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     expenseCategories,
     onAddExpenseCategory,
     onUpdateExpenseCategory,
-    onDeleteExpenseCategory
+    onDeleteExpenseCategory,
+    allData,
+    onRestoreData,
 }) => {
     const { addNotification } = useNotifier();
     const [settings, setSettings] = useState<Settings>(currentSettings);
@@ -94,6 +110,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
     const [isPushSubscribed, setIsPushSubscribed] = useState(false);
     const [isPushLoading, setIsPushLoading] = useState(true);
+
+    const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+    const [backupToRestore, setBackupToRestore] = useState<any>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setSettings(currentSettings);
@@ -175,6 +195,54 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         } finally {
             setIsPushLoading(false);
         }
+    };
+
+     const handleBackup = () => {
+        try {
+            exportDataToJson(allData);
+            addNotification('Backup file downloaded successfully!', 'success');
+        } catch (error) {
+            addNotification(`Backup failed: ${getErrorMessage(error)}`, 'error');
+        }
+    };
+
+    const handleRestoreClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const result = e.target?.result;
+                if (typeof result !== 'string') throw new Error("File content is not readable.");
+                const parsedJson = JSON.parse(result);
+                
+                if (validateBackupFile(parsedJson)) {
+                    setBackupToRestore(parsedJson);
+                    setIsRestoreConfirmOpen(true);
+                } else {
+                    throw new Error("Invalid or corrupted backup file.");
+                }
+
+            } catch (error) {
+                addNotification(`Restore failed: ${getErrorMessage(error)}`, 'error');
+            }
+        };
+        reader.readAsText(file);
+        // Reset file input so the same file can be selected again
+        event.target.value = '';
+    };
+    
+    const confirmRestore = () => {
+        if (backupToRestore) {
+            onRestoreData(backupToRestore);
+        }
+        setIsRestoreConfirmOpen(false);
+        setBackupToRestore(null);
     };
 
     const getPermissionButton = () => {
@@ -284,6 +352,31 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                             </button>
                         </div>
                     </SettingsCategory>
+
+                    <SettingsCategory
+                        title="Backup & Restore"
+                        description="Save all your data to a file or restore it from a backup."
+                    >
+                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <button
+                                onClick={handleBackup}
+                                disabled={!isEditMode}
+                                title={!isEditMode ? "Unlock Edit Mode to create a backup" : "Download all data as a JSON file"}
+                                className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                Backup Data
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" style={{ display: 'none' }} />
+                            <button
+                                onClick={handleRestoreClick}
+                                disabled={!isEditMode}
+                                title={!isEditMode ? "Unlock Edit Mode to restore data" : "Restore data from a backup file"}
+                                className="w-full sm:w-auto px-6 py-3 bg-amber-600 text-white font-semibold rounded-lg shadow-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition-colors disabled:bg-slate-700/50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            >
+                                Restore Data
+                            </button>
+                        </div>
+                    </SettingsCategory>
                 </div>
                 
                 <div className="mt-10 pt-6 border-t border-slate-700 flex justify-end">
@@ -315,6 +408,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 onDeleteCategory={onDeleteExpenseCategory}
                 isEditMode={isEditMode}
             />
+            {isRestoreConfirmOpen && (
+                 <ConfirmationModal
+                    isOpen={isRestoreConfirmOpen}
+                    onClose={() => setIsRestoreConfirmOpen(false)}
+                    onConfirm={confirmRestore}
+                    title="Confirm Data Restore"
+                    message="Are you sure? Restoring from a backup will DELETE ALL current data in the app and replace it. This action cannot be undone."
+                />
+            )}
         </>
     );
 };

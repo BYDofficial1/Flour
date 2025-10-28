@@ -19,8 +19,8 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         }
 
         // Aggregate expenses by category, safely handling potential non-numeric amount values.
-        // FIX: The initial value for the reduce accumulator must be typed for correct type inference.
-        const totalsByCategory = expenses.reduce((acc, expense) => {
+        // FIX: Add an explicit type to the accumulator to ensure `totalsByCategory` is correctly typed as Record<string, number>.
+        const totalsByCategory = expenses.reduce((acc: Record<string, number>, expense) => {
             const category = expense.category || 'Uncategorized';
             const amount = Number(expense.amount);
             // Ensure amount is a valid number before adding it to prevent NaN issues.
@@ -28,7 +28,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
                 acc[category] = (acc[category] || 0) + amount;
             }
             return acc;
-        }, {} as Record<string, number>);
+        }, {});
         
         const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + val, 0);
 

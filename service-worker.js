@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atta-chakki-hisab-v21'; // Bumped version for receivables feature
+const CACHE_NAME = 'atta-chakki-hisab-v22'; // Bumped version for new features and cleanup
 const CACHE_FILES = [
     // Core
     '/',
@@ -7,13 +7,9 @@ const CACHE_FILES = [
     '/App.tsx',
     '/types.ts',
     
-    // Auth & Security
+    // Auth & Security (Core)
     '/utils/supabase.ts',
     '/components/AuthModal.tsx',
-    '/components/SecuritySetupModal.tsx',
-    '/components/ChangePinModal.tsx',
-    '/pages/AuthPage.tsx',
-    '/utils/security.ts',
     
     // Context
     '/context/NotificationContext.tsx',
@@ -36,7 +32,6 @@ const CACHE_FILES = [
     '/pages/ReceivablesPage.tsx',
 
     // Components
-    '/components/Avatar.tsx',
     '/components/ChangeStatusModal.tsx',
     '/components/ConfirmationModal.tsx',
     '/components/ConflictResolutionModal.tsx',
@@ -67,7 +62,6 @@ const CACHE_FILES = [
     '/components/icons/BellIcon.tsx',
     '/components/icons/CalculatorIcon.tsx',
     '/components/icons/CalendarIcon.tsx',
-    '/components/icons/CameraIcon.tsx',
     '/components/icons/ChartIcon.tsx',
     '/components/icons/ChartPieIcon.tsx',
     '/components/icons/CheckCircleIcon.tsx',
@@ -83,14 +77,11 @@ const CACHE_FILES = [
     '/components/icons/ExclamationCircleIcon.tsx',
     '/components/icons/ExportIcon.tsx',
     '/components/icons/EyeIcon.tsx',
-    '/components/icons/FingerprintIcon.tsx',
     '/components/icons/HandRaisedIcon.tsx',
     '/components/icons/InformationCircleIcon.tsx',
-    '/components/icons/KeypadIcon.tsx',
     '/components/icons/ListBulletIcon.tsx',
     '/components/icons/LockClosedIcon.tsx',
     '/components/icons/LockOpenIcon.tsx',
-    '/components/icons/LogoutIcon.tsx',
     '/components/icons/MenuIcon.tsx',
     '/components/icons/PhoneIcon.tsx',
     '/components/icons/PlusIcon.tsx',
