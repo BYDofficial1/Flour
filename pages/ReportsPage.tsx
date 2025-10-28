@@ -10,7 +10,6 @@ import { ExclamationCircleIcon } from '../components/icons/ExclamationCircleIcon
 import { DocumentPlusIcon } from '../components/icons/DocumentPlusIcon';
 import { SortIcon } from '../components/icons/SortIcon';
 import { ReceiptIcon } from '../components/icons/ReceiptIcon';
-import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
 
 interface ReportsPageProps {
     transactions: Transaction[];
@@ -138,7 +137,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                {/* Left Column: Stats & Expense Chart */}
+                {/* Left Column: Stats */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <StatCard 
@@ -176,7 +175,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, expenses, isEdi
                             icon={<ChartIcon />}
                         />
                     </div>
-                    <ExpenseBreakdownChart expenses={monthlyExpenses} />
                 </div>
                 
                 {/* Right Column: Transaction List */}

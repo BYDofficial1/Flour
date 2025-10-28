@@ -18,21 +18,20 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
             return { chartData: { labels: [], datasets: [] }, totalExpenses: 0, legendData: [] };
         }
 
-        // FIX: By strongly typing the initial value of the reduce function, 
-        // we ensure `totalsByCategory` has the correct `Record<string, number>` type,
-        // which resolves all downstream type errors.
+        // Aggregate expenses by category, safely handling potential non-numeric amount values.
+        // FIX: The initial value for the reduce accumulator must be typed for correct type inference.
         const totalsByCategory = expenses.reduce((acc, expense) => {
             const category = expense.category || 'Uncategorized';
-            acc[category] = (acc[category] || 0) + Number(expense.amount);
+            const amount = Number(expense.amount);
+            // Ensure amount is a valid number before adding it to prevent NaN issues.
+            if (!isNaN(amount)) {
+                acc[category] = (acc[category] || 0) + amount;
+            }
             return acc;
         }, {} as Record<string, number>);
+        
+        const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + val, 0);
 
-        // FIX: This operation could fail if `val` is not a number. The fix above ensures `val` is a number,
-        // and the `Number()` cast provides additional runtime safety.
-        const currentTotal = Object.values(totalsByCategory).reduce((sum, val) => sum + Number(val), 0);
-
-        // FIX: This sort operation could fail if array values were not numbers.
-        // The fix to `totalsByCategory` typing resolves this, making `b[1]` and `a[1]` numbers.
         const sortedEntries = Object.entries(totalsByCategory).sort((a, b) => b[1] - a[1]);
         
         // Group smaller slices into 'Other' for clarity
@@ -43,7 +42,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
                 if (i < 5) {
                     mainEntries.push(sortedEntries[i]);
                 } else {
-                    otherTotal += Number(sortedEntries[i][1]);
+                    otherTotal += sortedEntries[i][1];
                 }
             }
             if (otherTotal > 0) {
@@ -77,7 +76,7 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
         const finalLegendData = mainEntries.map(([name, value], i) => ({
             name,
             value,
-            percentage: currentTotal > 0 ? ((Number(value) / currentTotal) * 100).toFixed(1) : '0.0',
+            percentage: currentTotal > 0 ? ((value / currentTotal) * 100).toFixed(1) : '0.0',
             color: colors[i % colors.length]
         }));
         
