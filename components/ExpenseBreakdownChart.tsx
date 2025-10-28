@@ -18,8 +18,10 @@ const ExpenseBreakdownChart: React.FC<ExpenseBreakdownChartProps> = ({ expenses 
             return { chartData: { labels: [], datasets: [] }, totalExpenses: 0, legendData: [] };
         }
 
-        // Aggregate expenses by category, safely handling potential non-numeric amount values.
-        // FIX: Add an explicit type to the accumulator to ensure `totalsByCategory` is correctly typed as Record<string, number>.
+        // Aggregate expenses by category.
+        // FIX: Explicitly type the accumulator `acc` as `Record<string, number>`
+        // to prevent TypeScript from inferring its values as `unknown`. This
+        // resolves all downstream type errors in this block.
         const totalsByCategory = expenses.reduce((acc: Record<string, number>, expense) => {
             const category = expense.category || 'Uncategorized';
             const amount = Number(expense.amount);

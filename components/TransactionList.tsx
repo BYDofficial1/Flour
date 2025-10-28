@@ -144,6 +144,7 @@ const TransactionCard: React.FC<{
     const grindingReduction = t.grinding_reduction_kg || 0;
     const flourRemaining = t.quantity - (t.flour_taken_kg || 0) - flourUsedForCosts - cleaningReduction - grindingReduction;
 
+
     const statusStyles: Record<Transaction['payment_status'] | 'settled', { border: string, bg: string }> = {
         paid: { border: 'border-l-green-500/80', bg: 'bg-gradient-to-r from-green-500/10' },
         unpaid: { border: 'border-l-red-500/80', bg: 'bg-gradient-to-r from-red-500/10' },
@@ -211,42 +212,49 @@ const TransactionCard: React.FC<{
 
             {isGrindingService && (
                 <div className="px-4 pb-4">
-                     <div className="bg-slate-700/50 p-3 rounded-lg space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-300">Initial Wheat</span>
-                            <span className="font-semibold text-slate-100">{t.quantity.toFixed(2)} kg</span>
+                    <div className="bg-slate-700/50 p-3 rounded-lg">
+                        <h4 className="text-sm font-semibold text-primary-400 mb-2">Flour Account</h4>
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-slate-300">Initial Wheat</span>
+                                <span className="font-semibold text-slate-100">{t.quantity.toFixed(2)} kg</span>
+                            </div>
+                            
+                            {cleaningReduction > 0 && (
+                                <div className="flex justify-between text-slate-400">
+                                    <span>(-) Cleaning Reduction</span>
+                                    <span className="font-semibold">-{cleaningReduction.toFixed(2)} kg</span>
+                                </div>
+                            )}
+                            {grindingReduction > 0 && (
+                                <div className="flex justify-between text-slate-400">
+                                    <span>(-) Grinding Reduction</span>
+                                    <span className="font-semibold">-{grindingReduction.toFixed(2)} kg</span>
+                                </div>
+                            )}
+                             {(t.flour_taken_kg || 0) > 0 && (
+                                <div className="flex justify-between text-slate-400">
+                                    <span>(-) Flour Taken by Customer</span>
+                                    <span className="font-semibold">-{(t.flour_taken_kg || 0).toFixed(2)} kg</span>
+                                </div>
+                            )}
+                             {flourUsedForCosts > 0 && (
+                                <div className="flex justify-between text-slate-400">
+                                    <span>(-) Flour for Payment</span>
+                                    <span className="font-semibold">-{flourUsedForCosts.toFixed(2)} kg</span>
+                                </div>
+                            )}
                         </div>
-                        {(t.cleaning_reduction_kg ?? 0) > 0 && (
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">(-) Cleaning Reduction</span>
-                                <span className="font-semibold text-slate-200">{(t.cleaning_reduction_kg || 0).toFixed(2)} kg</span>
-                            </div>
-                        )}
-                        {(t.grinding_reduction_kg ?? 0) > 0 && (
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">(-) Grinding Reduction</span>
-                                <span className="font-semibold text-slate-200">{(t.grinding_reduction_kg || 0).toFixed(2)} kg</span>
-                            </div>
-                        )}
-                        {(t.flour_taken_kg ?? 0) > 0 && (
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">(-) Flour Taken</span>
-                                <span className="font-semibold text-slate-200">{(t.flour_taken_kg || 0).toFixed(2)} kg</span>
-                            </div>
-                        )}
-                        {flourUsedForCosts > 0 && (
-                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-400">(-) Paid with Flour</span>
-                                <span className="font-semibold text-slate-200">{flourUsedForCosts.toFixed(2)} kg</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between text-base pt-2 border-t border-slate-600/50">
+                        <div className="mt-3 pt-3 border-t border-slate-600/50 flex justify-between items-baseline">
                             <span className="font-bold text-slate-200">Remaining Flour</span>
-                            <span className={`font-bold ${flourRemaining >= 0 ? 'text-amber-400' : 'text-red-400'}`}>{flourRemaining.toFixed(2)} kg</span>
+                            <span className={`font-bold text-xl ${flourRemaining >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {flourRemaining.toFixed(2)} kg
+                            </span>
                         </div>
                     </div>
                 </div>
             )}
+
              {reminderInfo && (
                 <div className="px-4 pb-4">
                     <div className={`flex items-center gap-2 p-2 rounded-lg text-sm bg-slate-700`}>
